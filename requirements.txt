@@ -1,0 +1,4 @@
+wget
+tqdm
+torch
+tensorflow
