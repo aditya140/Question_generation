@@ -2,3 +2,4 @@ wget
 tqdm
 torch
 tensorflow
+hyperdash

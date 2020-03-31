@@ -46,7 +46,9 @@ class QGenDataset(object):
         self.questions=questions
         self.answers=answers
 
-    def get_CAQ(self):
+    def get_CAQ(self,sample=False):
+        if sample:
+            return self.context[:2000],self.questions[:2000],self.answers[:2000]
         return self.context,self.questions,self.answers
 
     def find_answer_sentence(self,answer,context,find_start_period=True):
@@ -74,33 +76,5 @@ class QGenDataset(object):
             Y[i]=self.questions[i]
         return (X,Y)
 
-
-### Preprocess sentences
-
-def unicode_to_ascii(s):
-    """
-    Normalizes latin chars with accent to their canonical decomposition
-    """
-    return ''.join(c for c in unicodedata.normalize('NFD', s)
-        if unicodedata.category(c) != 'Mn')
-
-def preprocess_sentence(w):
-    w = unicode_to_ascii(w.lower().strip())
-    
-    # creating a space between a word and the punctuation following it
-    # eg: "he is a boy." => "he is a boy ." 
-    # Reference:- https://stackoverflow.com/questions/3645931/python-padding-punctuation-with-white-spaces-keeping-punctuation
-    w = re.sub(r"([?.!,¿])", r" \1 ", w)
-    w = re.sub(r'[" "]+', " ", w)
-    
-    # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
-    w = re.sub(r"[^a-zA-Z?.!,¿]+", " ", w)
-    
-    w = w.rstrip().strip()
-    
-    # adding a start and an end token to the sentence
-    # so that the model know when to start and stop predicting.
-    w = '<start> ' + w + ' <end>'
-    return w
 
 
