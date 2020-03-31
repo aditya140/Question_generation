@@ -1,5 +1,5 @@
-from data_loader import QGenDataset,unicode_to_ascii,preprocess_sentence
-from seq2seq import Seq2Seq
+from data_loader import QGenDataset
+from seq2seq import *
 from languageField import LanguageIndex
 from pprint import pprint
 from utils import *
