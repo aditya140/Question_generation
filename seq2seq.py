@@ -30,7 +30,7 @@ class Decoder(nn.Module):
         self.vocab_size=vocab_size
         self.bidirectional=bidirectional
         self.embedding=nn.Embedding(num_embeddings=vocab_size,embedding_dim=embedding_dim,padding_idx=0)
-        self.rnn=nn.GRU(input_size=embedding_dim,hidden_size=hidden_size,num_layers=decoder_units,dropout=0.2,bidirectional=BIDIRECTIONAL)
+        self.rnn=nn.GRU(input_size=embedding_dim,hidden_size=hidden_size,num_layers=decoder_units,dropout=0.2,bidirectional=bidirectional)
         self.fc=nn.Linear(hidden_size*(2 if self.bidirectional else 1),vocab_size)
 
     def forward(self,input,hidden,device): 
