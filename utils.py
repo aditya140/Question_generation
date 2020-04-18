@@ -2,6 +2,8 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import torch
 import re
+import wget
+import os
 def max_length(tensor):
     return max(len(t) for t in tensor)
 
@@ -33,3 +35,64 @@ class MyData(Dataset):
     
     def __len__(self):
         return len(self.data)
+
+def load_glove_embedding(vocab,glove):
+    
+    nlp = glove
+    vocab_size = len(vocab.word2idx)
+    word_vec_size = 300
+    embedding = np.zeros((vocab_size, word_vec_size))
+    unk_count = 0
+    
+    print('='*100)
+    print('Loading spacy glove embedding:')
+    print('- Vocabulary size: {}'.format(vocab_size))
+    print('- Word vector size: {}'.format(word_vec_size))
+    
+    for token, index in tqdm(vocab.word2idx.items()):
+        if token == vocab.special["pad_token"]: 
+            continue
+        elif token in [vocab.special["eos_token"], vocab.special["init_token"], vocab.special["unk_token"]]: 
+            vector = np.random.rand(word_vec_size,)
+        elif token in nlp.keys():
+            vector = nlp[token]
+        else:
+            vector = embedding[vocab.word2idx[vocab.special["unk_token"]]]
+            unk_count += 1
+            
+        embedding[index] = vector
+        
+    print('\n- Unknown word count: {}'.format(unk_count))
+    print('='*100 + '\n')
+        
+    return torch.from_numpy(embedding).float()
+
+def download_glove(link="http://nlp.stanford.edu/data/glove.6B.zip"):
+    print("Downloading glove")
+    if not os.path.exists("./glove"):
+        if not os.path.exists("glove.zip"):
+            wget.download(link,"glove.zip")
+        print("Extracting Glove")
+        with zipfile.ZipFile("./glove.zip", 'r') as zip_ref:
+            zip_ref.extractall("glove")
+
+
+import numpy as np
+from tqdm import tqdm
+def loadGloveModel(gloveFile="./glove/glove.6B.300d.txt"):
+    if not os.path.exists(gloveFile):
+        download_glove()
+    print("Loading Glove Model")
+    with open(gloveFile,'r') as f:
+        model = {}
+        for line in tqdm(f,position=0,leave=False):
+            splitLine = line.split()
+            try:
+                word = " ".join(splitLine[0:-300])
+                embedding = np.array([float(val) for val in splitLine[-300:]])
+                model[word] = embedding
+            except:
+                print(f"Error in {splitLine[0]}")
+                print(f"Vect : \n{splitLine[1:]}")
+        print("Done.",len(model)," words loaded!")
+    return model

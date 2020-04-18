@@ -2,17 +2,24 @@ import spacy
 from collections import Counter 
 import sys
 import numpy as np
+import pandas as pd
+from transformers import AutoTokenizer
+
 class LanguageIndex():
 
-    def __init__(self, lang, pad="<PAD>",init_token="<SOS>",eos_token="<EOS>",unk_token="<UNK>",max_len=None,vocab_size=None,lower_case=True):
+    def __init__(self, lang,tokenizer="spacy", pad="<PAD>",init_token="<SOS>",eos_token="<EOS>",unk_token="<UNK>",max_len=None,vocab_size=None,lower_case=True):
         """ lang are the list of phrases from each language"""
         self.lang = lang
         self.word2idx = {}
         self.idx2word = {}
         self.special={}
         self.max_len=max_len
-        self.vocab_size=vocab_size if vocab_size!=None else sys.maxsize
+        self.vocab_size=vocab_size-4 if vocab_size!=None else sys.maxsize
         self.lower=lower_case
+        self.tokenizer=tokenizer
+        if self.tokenizer=="BERT":
+            model_type = 'bert-base-uncased'
+            self.bert_tokenizer = AutoTokenizer.from_pretrained(model_type)
 
         # add a padding token with index 0
         self.word2idx[pad] = 0
@@ -31,6 +38,7 @@ class LanguageIndex():
         self.counter=Counter()
         self.spacy=None
         self.create_index()
+        
 
     @staticmethod
     def unicode_to_ascii(s):
@@ -59,11 +67,13 @@ class LanguageIndex():
         # so that the model know when to start and stop predicting.
         return w
         
-    def tokenize(self,phrase,tokenizer="spacy"):
-        if tokenizer=="spacy":
+    def tokenize(self,phrase):
+        if self.tokenizer=="spacy":
             if not self.spacy:
                 self.spacy = spacy.load('en')
             return [tok.text for tok in self.spacy.tokenizer(phrase)]
+        if self.tokenizer=="BERT":
+            return self.bert_tokenizer.tokenize(phrase)
         else:
             return self.preprocess(phrase)
 
@@ -94,7 +104,7 @@ class LanguageIndex():
     def encode(self,input,special_tokens=True):
         pad_len=self.max_len
         input=input.lower() if self.lower else input
-        tokens=[tok.text for tok in self.spacy.tokenizer(input)]
+        tokens=[tok for tok in self.tokenize(input)]
         if pad_len!=None:
             if len(tokens)>pad_len-(2 if special_tokens else 0):
                 if special_tokens:
@@ -104,7 +114,10 @@ class LanguageIndex():
             else:
                 return ([1] if special_tokens else []) + [self.word2idx[s] if s in self.word2idx.keys() else 3 for s in tokens] +([2] if special_tokens else []) +[0 for i in range(pad_len-(2 if special_tokens else 0)-len(tokens))]
         return ([1] if special_tokens else []) + [self.word2idx[s] if s in self.word2idx.keys() else 3 for s in tokens] +([2] if special_tokens else []) 
-    def decode(self,input):
-        return [self.idx2word[s] for s in input]
-    def vocab_size(self):
-        return len(self.word2idx)
+    def decode(self,input,to_string=False):
+        sent=[self.idx2word[s] if s in self.idx2word.keys() else self.special["unk_token"] for s in input]
+        if self.tokenizer=="BERT" and to_string:
+            return self.bert_tokenizer.convert_tokens_to_string(sent)
+        return sent
+    def vocab_size_final(self):
+        return len(self.word2idx.keys())

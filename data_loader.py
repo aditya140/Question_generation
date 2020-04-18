@@ -2,64 +2,97 @@ import wget
 import json
 from tqdm import tqdm
 import os
+import spacy
+import zipfile
 import unicodedata
 import re
-
+import pandas as pd
 class QGenDataset(object):
-    def __init__(self,squad=True,USE_ENTIRE_SENTENCE=True):
+    def __init__(self,squad=True,USE_ENTIRE_SENTENCE=True,test_nmt=False):
         self.USE_ENTIRE_SENTENCE=USE_ENTIRE_SENTENCE
-        if squad:
+        if squad and not test_nmt:
             if not os.path.exists("./train-v2.0.json"):
                 wget.download("https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json")
             with open("./train-v2.0.json",'r') as f:
                 self.raw_data=json.load(f)
-            self.__get_CAQ__()
-            
-            
-    def __get_CAQ__(self):
-        questions=[]
-        context=[]
-        answers_partial=[]
-        answers=[]
-        title=[]
-        _id=[]
-        for rc in self.raw_data["data"]:
-            for para in rc["paragraphs"]:
-                for qas in para["qas"]:
-                    if qas["answers"]!=[]:
-                        questions.append(qas["question"])
-                        _id.append(qas["id"])
-                        context.append(para["context"])
-                        title.append(rc["title"])
-                        answers_partial.append( (qas["answers"][0]["text"] ,qas["answers"][0]["answer_start"]))
+            self.data=self._get_dataset()
+        if test_nmt:
+            with zipfile.ZipFile("/content/drive/My Drive/Thesis/spa-eng.zip", 'r') as zip_ref:
+                zip_ref.extractall("./spa/")
+            with open("./spa/spa.txt",'r') as f:
+                self.nmt_raw=f.read().strip().split('\n')
+            self.__get_NMT__()
+    def __get_NMT__(self):
+        original_word_pairs = [[w for w in l.split('\t')] for l in self.nmt_raw]
+        self.eng=[i[0] for i in original_word_pairs]
+        self.spa=[i[1] for i in original_word_pairs]
 
-        assert(len(context)==len(answers_partial)==len(questions)==len(title)==len(_id))
-        self.data_len=len(context)
-        if self.USE_ENTIRE_SENTENCE:
-            for i in (range(self.data_len)):
-                answers.append(self.find_answer_sentence(answers_partial[i],context[i]))
-        else:
-            for i in (range(self.data_len)):
-                answers.append(answers_partial[i][0])
-        del answers_partial
-        self.context=context
-        self.questions=questions
-        self.answers=answers
-
-    def get_CAQ(self,sample=False):
+    def get_AQ(self,max_len=80,sample=True):
+        raw_data = {'ans' : [line[0] for line in self.data], 'que': [line[1] for line in self.data]}
+        df = pd.DataFrame(raw_data, columns=["ans", "que"])
+        # remove very long sentences and sentences where translations are 
+        # not of roughly equal length
+        df['ans_len'] = df['ans'].str.count(' ')
+        df['que_len'] = df['que'].str.count(' ')
+        df = df.query('ans_len <'+str(max_len)+' & que_len <'+str(max_len))
+        df = df.drop_duplicates()
         if sample:
-            return self.context[:2000],self.questions[:2000],self.answers[:2000]
-        return self.context,self.questions,self.answers
+            return df["ans"].values[:2000],df["que"].values[:2000]
+        return df["ans"].values,df["que"].values
+        
 
-    def find_answer_sentence(self,answer,context,find_start_period=True):
-        start_pos=answer[1]
-        if find_start_period:
-            while (start_pos!=0) and (context[start_pos]!="."):
-                start_pos-=1
-        end_pos=answer[1]+len(answer[0])
-        while (end_pos<len(context)) and (context[end_pos]!="."):
-            end_pos+=1
-        return context[start_pos+1:end_pos]
+    def get_NMT(self,sample=False):
+        if sample:
+            return self.eng[:2000],self.spa[:2000]   
+        return self.eng,self.spa 
+
+    def _create_dataset(self,data,normalize=True):
+        load_failure=0
+        try:
+            if "data" in data.keys():
+                data=data["data"]
+        except:
+            pass
+        que_ans=[]
+        for topic in data:
+            for para in topic["paragraphs"]:
+                for qa in para["qas"]:
+                    try:
+                        res=[]
+                        if normalize:
+                            res.append(self._normalize(self._get_sentence(para["context"],qa["answers"][0]["answer_start"],qa["answers"][0]["text"])))
+                            res.append(self._normalize(qa["question"]))
+                        else:
+                            res.append(self._get_sentence(para["context"],qa["answers"][0]["answer_start"],qa["answers"][0]["text"]))
+                            res.append(qa["question"])
+                        que_ans.append(res)
+                    except:
+                        load_failure+=1
+        print("Load Failure : ",load_failure)
+        return que_ans
+    @staticmethod
+    def _get_sentence(context,position,text):
+        if "." in text[:-1]:
+            return_2=True
+        else:
+            return_2=False
+        context=context.split(".")
+        count=0
+        for sent in range(len(context)):
+            if count+len(context[sent])>position:
+                if return_2:
+                    return ".".join(context[sent:sent+2])
+                else:
+                    return context[sent]
+            else:
+                count+=len(context[sent])+1
+        return False
+
+    def _get_dataset(self,normalize=True):
+        data =  self._create_dataset(self.raw_data,normalize=normalize)
+        return data  
+            
+    
     def __len__(self):
         return self.data_len
     def apply(self,function,all=True):
@@ -75,6 +108,15 @@ class QGenDataset(object):
             X[i]="[CLS] " + self.context[i] +"[SEP]"+ self.answers[i] + "[SEP]"
             Y[i]=self.questions[i]
         return (X,Y)
-
-
+    @staticmethod
+    def unicodeToAscii(s):
+        return ''.join(
+        c for c in unicodedata.normalize('NFD', s)
+        if unicodedata.category(c) != 'Mn'
+    )
+    def _normalize(self,s):
+        s = self.unicodeToAscii(s.lower().strip())
+        s = re.sub(r"([.!?])", r" \1", s)
+        #s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+        return s
 
