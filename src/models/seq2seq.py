@@ -1,22 +1,24 @@
 from torch import nn
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import random
 import torch
+from torch.nn import Parameter
+
 class Encoder(nn.Module):
     def __init__(self,vocab_size,embedding_dim,encoder_units,hidden_size,batch_size,bidirectional):
         super(Encoder,self).__init__()
-        self.batch_size=batch_size 
+        self.batch_size=batch_size
         self.hidden_size=hidden_size
         self.vocab_size=vocab_size
         self.bidirectional=bidirectional
         self.embedding=nn.Embedding(num_embeddings=vocab_size,embedding_dim=embedding_dim,padding_idx=0) #[emb]
         self.rnn=nn.GRU(input_size=embedding_dim,hidden_size=hidden_size,num_layers=encoder_units,dropout=0.2,bidirectional=bidirectional)
+        self.template_zeros=Parameter(torch.zeros(1),requires_grad=False)
 
-    def forward(self,input,device):
+    def forward(self,input):
         x=input.transpose(0,1) # x = [max_len , batch_size ]
         x=self.embedding(x)  # x = [max_len , batch_size , emb_dim]
         batch_size=x.shape[1]
-        hidden=torch.zeros(2 if self.bidirectional else 1,batch_size,self.hidden_size).to(device) # hidden = [1 , batch_size , hidden_size]
+        hidden=self.template_zeros.repeat(2 if self.bidirectional else 1,batch_size,self.hidden_size) # hidden = [1 , batch_size , hidden_size]
         output,hidden=self.rnn(x,hidden) # output = [max_len , batch_size , emb_dim]  hidden = [1 , batch_size , hidden_size]
         return output,hidden
 
@@ -33,7 +35,7 @@ class Decoder(nn.Module):
         self.rnn=nn.GRU(input_size=embedding_dim,hidden_size=hidden_size,num_layers=decoder_units,dropout=0.2,bidirectional=bidirectional)
         self.fc=nn.Linear(hidden_size*(2 if self.bidirectional else 1),vocab_size)
 
-    def forward(self,input,hidden,device): 
+    def forward(self,input,hidden): 
         x=input.view(1,-1) # x = [1 , batch_size ]
         x=self.embedding(x) # x = [1 , batch_size , emb_dim]
         output, hidden = self.rnn(x, hidden)
@@ -44,27 +46,42 @@ class Decoder(nn.Module):
 
 
 class Seq2seq(nn.Module):
-    def __init__(self,input_vocab,output_vocab,embedding_dim,rnn_units,hidden_size,batch_size,teacher_forcing,device,bidirectional):
-        super(Seq2seq,self).__init__()
+    """[summary]
+    Seq2seq Model 
+    """    
+    def __init__(self,input_vocab,output_vocab,embedding_dim,rnn_units,hidden_size,batch_size,teacher_forcing,bidirectional):
+        """[summary]
+
+        Arguments:
+            nn {[type]} -- [description]
+            input_vocab {[type]} -- [description]
+            output_vocab {[type]} -- [description]
+            embedding_dim {[type]} -- [description]
+            rnn_units {[type]} -- [description]
+            hidden_size {[type]} -- [description]
+            batch_size {[type]} -- [description]
+            teacher_forcing {[type]} -- [description]
+            bidirectional {[type]} -- [description]
+        """        
+        super(Seq2seq,self).__init__()  
         self.input_vocab=input_vocab
         self.output_vocab=output_vocab
         self.batch_size=batch_size
         self.teacher_forcing=teacher_forcing
         self.encoder=Encoder(input_vocab,embedding_dim=embedding_dim,encoder_units=rnn_units,hidden_size=hidden_size,batch_size=batch_size,bidirectional=bidirectional)
         self.decoder=Decoder(output_vocab,embedding_dim=embedding_dim,decoder_units=rnn_units,hidden_size=hidden_size,batch_size=batch_size,bidirectional=bidirectional)
-        self.device=device
+        self.template_zero=Parameter(torch.zeros(1),requires_grad=False)
+        
 
-    def forward(self,input,target,teacher_forcing=True):
-        input=input.to(self.device)
-        target=target.to(self.device)
+    def forward(self,input,target,teacher_forcing=True):        
         # target_len=sum(torch.sum(target,dim=0)==0).item()
         target_len=target.shape[-1]
         # print(target_len)
-        final_opt=torch.zeros(target_len, self.batch_size, self.output_vocab).to(self.device)
-        enc_output,enc_hidden=self.encoder(input,self.device)
+        final_opt=self.template_zero.repeat(target_len,self.batch_size,self.output_vocab)
+        enc_output,enc_hidden=self.encoder(input)
         decoder_input=target[:,0]
         for t in range(1,target_len):
-            pred,dec_opt,dec_hidden=self.decoder(decoder_input,enc_hidden,self.device)
+            pred,dec_opt,dec_hidden=self.decoder(decoder_input,enc_hidden)
             enc_hidden=dec_hidden
             top1=pred.argmax(dim=2)
             final_opt[t-1]=pred
