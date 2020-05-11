@@ -201,7 +201,7 @@ class Seq2seq(pl.LightningModule):
     def val_dataloader(self):
         return DataLoader(self.test_dataset, batch_size = BATCH_SIZE, 
                             drop_last=True,
-                            shuffle=True)
+                            shuffle=False)
 
     # def test_dataloader(self):
     #     return DataLoader(self.final_test_dataset,batch_size=TEST_BATCH_SIZE) 
@@ -250,7 +250,7 @@ class Seq2seq(pl.LightningModule):
         return {'avg_val_loss': avg_loss, 'log': tensorboard_logs}
 
 model = Seq2seq(INPUT_VOCAB,EMBEDDING_DIM,HIDDEN_SIZE,LAYERS,0.3,OUTPUT_VOCAB,EMBEDDING_DIM,0.3,enc_embedding=None,dec_embedding=None)
-trainer = pl.Trainer()
+trainer = pl.Trainer(gpus=1)
 
 trainer.fit(model)
 

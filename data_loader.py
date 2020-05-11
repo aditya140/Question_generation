@@ -2,24 +2,30 @@ import wget
 import json
 from tqdm import tqdm
 import os
+import torchtext
 import spacy
 import zipfile
 import unicodedata
 import re
-import pandas as pd
+from sklearn.model_selection import train_test_split
+
 class QGenDataset(object):
-    def __init__(self,squad=True,USE_ENTIRE_SENTENCE=True,test_nmt=False):
+    def __init__(self,squad=True,USE_ENTIRE_SENTENCE=True):
         self.USE_ENTIRE_SENTENCE=USE_ENTIRE_SENTENCE
-        if squad and not test_nmt:
+        self.squad=squad
+        if squad:
             if not os.path.exists("./train-v2.0.json"):
                 wget.download("https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json")
             with open("./train-v2.0.json",'r') as f:
                 self.raw_data=json.load(f)
             self.data=self._get_dataset()
-        if test_nmt:
-            with zipfile.ZipFile("/content/drive/My Drive/Thesis/spa-eng.zip", 'r') as zip_ref:
-                zip_ref.extractall("./spa/")
-            with open("./spa/spa.txt",'r') as f:
+        if not squad:
+            if not os.path.exists("./spa-eng.zip"):
+                wget.download('http://download.tensorflow.org/data/spa-eng.zip')
+            if not os.path.exists("./spa/spa-eng/spa.txt"):
+                with zipfile.ZipFile("./spa-eng.zip", 'r') as zip_ref:
+                    zip_ref.extractall("./spa/")
+            with open("./spa/spa-eng/spa.txt",'r') as f:
                 self.nmt_raw=f.read().strip().split('\n')
             self.__get_NMT__()
     def __get_NMT__(self):
@@ -91,8 +97,6 @@ class QGenDataset(object):
     def _get_dataset(self,normalize=True):
         data =  self._create_dataset(self.raw_data,normalize=normalize)
         return data  
-            
-    
     def __len__(self):
         return self.data_len
     def apply(self,function,all=True):
@@ -120,3 +124,21 @@ class QGenDataset(object):
         #s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
         return s
 
+    def getData(self,input_vocab,output_vocab,max_len,tokenizer,sample=False,batch_size=64,val_split=0.1,test_split=0.1):
+        if self.squad:
+            input_,output_=self.get_AQ(max_len=max_len,sample=sample)
+        else:
+            input_,output_=self.get_NMT(sample=sample)
+        print(f"Loaded: {len(input_)} samples")
+        train_set_input,test_set_input,train_set_output,test_set_output=train_test_split(input_,output_,test_size=test_split)
+        input_train,input_test,output_train,output_test=train_test_split(train_set_input,train_set_output,test_size=val_split)
+        inpLang=LanguageIndex(input_train,vocab_size=input_vocab,max_len=max_len,tokenizer=tokenizer)
+        optLang=LanguageIndex(output_train,vocab_size=output_vocab,max_len=max_len,tokenizer=tokenizer)
+        input_train_tokens=inpLang.encode_batch(input_train)
+        input_test_tokens=inpLang.encode_batch(input_test)
+        ouptut_train_tokens=optLang.encode_batch(output_train)
+        output_test_tokens=optLang.encode_batch(output_test)
+        test_dataset = TestData(test_set_input,test_set_output)
+        train_dataset = TrainData(input_train_tokens,ouptut_train_tokens)
+        val_dataset = TrainData(input_test_tokens, output_test_tokens)
+        return train_dataset,val_dataset,test_dataset,inpLang,optLang

@@ -68,6 +68,8 @@ class LanguageIndex():
         return w
         
     def tokenize(self,phrase):
+        if self.lower:
+            phrase=phrase.lower()
         if self.tokenizer=="spacy":
             if not self.spacy:
                 self.spacy = spacy.load('en')
