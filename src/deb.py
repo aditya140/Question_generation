@@ -1,5 +1,6 @@
-from dataPrep.data_loader import QGenDataset
+import torch
+a=torch.rand(1)[0]<torch.tensor(0.8)
+if a:
+    print(1)
+print(a)
 
-a=QGenDataset()
-data=a.getData(input_vocab=10000, output_vocab=10000, max_len=100, tokenizer="spacy", sample=False, batch_size=64, val_split=0.1, test_split=0.1)
-print(len(data))

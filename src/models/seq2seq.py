@@ -2,118 +2,195 @@ from torch import nn
 import random
 import torch
 from torch.nn import Parameter
+import numpy as np
+
 
 class Encoder(nn.Module):
-    def __init__(self,vocab_size,embedding_dim,encoder_units,hidden_size,bidirectional):
-        super(Encoder,self).__init__()
-        self.hidden_size=hidden_size
-        self.vocab_size=vocab_size
-        self.bidirectional=bidirectional
-        self.embedding=nn.Embedding(num_embeddings=vocab_size,embedding_dim=embedding_dim,padding_idx=0) #[emb]
-        self.rnn=nn.GRU(input_size=embedding_dim,hidden_size=hidden_size,num_layers=encoder_units,dropout=0.2,bidirectional=bidirectional)
-        self.template_zeros=Parameter(torch.zeros(1),requires_grad=False)
+    def __init__(self, input_dim, emb_dim, hid_dim, n_layers, dropout, embedding=None):
+        super(Encoder, self).__init__()
+        self.hid_dim = hid_dim
+        self.n_layers = n_layers
+        self.embedding = nn.Embedding(input_dim, emb_dim)
+        if embedding != None:
+            self.embedding.load_state_dict({"weight": embedding})
+            self.embedding.weight.requires_grad = False
+        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout=dropout)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self,input):
-        x=input.transpose(0,1) # x = [max_len , batch_size ]
-        x=self.embedding(x)  # x = [max_len , batch_size , emb_dim]
-        batch_size=x.shape[1]
-        hidden=self.template_zeros.repeat(2 if self.bidirectional else 1,batch_size,self.hidden_size) # hidden = [1 , batch_size , hidden_size]
-        output,hidden=self.rnn(x,hidden) # output = [max_len , batch_size , emb_dim]  hidden = [1 , batch_size , hidden_size]
-        return output,hidden
-
+    def forward(self, src):
+        src = src.transpose(0, 1)
+        embedded = self.dropout(self.embedding(src))
+        output, (hidden, cell) = self.rnn(embedded)
+        return hidden, cell
 
 
 class Decoder(nn.Module):
-    def __init__(self,vocab_size,embedding_dim,decoder_units,hidden_size,bidirectional):
-        super(Decoder,self).__init__()
-        self.hidden_size=hidden_size
-        self.vocab_size=vocab_size
-        self.bidirectional=bidirectional
-        self.embedding=nn.Embedding(num_embeddings=vocab_size,embedding_dim=embedding_dim,padding_idx=0)
-        self.rnn=nn.GRU(input_size=embedding_dim,hidden_size=hidden_size,num_layers=decoder_units,dropout=0.2,bidirectional=bidirectional)
-        self.fc=nn.Linear(hidden_size*(2 if self.bidirectional else 1),vocab_size)
+    def __init__(self, output_dim, emb_dim, hid_dim, n_layers, dropout, embedding=None):
+        super(Decoder, self).__init__()
+        self.output_dim = output_dim
+        self.hid_dim = hid_dim
+        self.n_layers = n_layers
+        self.embedding = nn.Embedding(output_dim, emb_dim)
+        if embedding != None:
+            self.embedding.load_state_dict({"weight": embedding})
+            self.embedding.weight.requires_grad = False
+        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout=dropout)
+        self.fc = nn.Linear(hid_dim, output_dim)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self,input,hidden): 
-        x=input.view(1,-1) # x = [1 , batch_size ]
-        x=self.embedding(x) # x = [1 , batch_size , emb_dim]
-        output, hidden = self.rnn(x, hidden)
-        prediction = self.fc(output)
-        return prediction, output ,hidden
+    def forward(self, input, hidden, cell):
+        input = input.unsqueeze(0)
+        embedded = self.dropout(self.embedding(input))
+        output, (hidden, cell) = self.rnn(embedded, (hidden, cell))
+        prediction = self.fc(output.squeeze(0))
+        return prediction, hidden, cell
 
 
-
-
-class Seq2seq(nn.Module):
-    """[summary]
-    Seq2seq Model 
-    """    
-    def __init__(self,input_vocab,output_vocab,embedding_dim,rnn_units,hidden_size,teacher_forcing,bidirectional):
+class Seq2seq(torch.jit.ScriptModule):
+    def __init__(
+        self,
+        INPUT_VOCAB,
+        OUTPUT_VOCAB,
+        ENC_EMB_DIM,
+        DEC_EMB_DIM,
+        HID_DIM,
+        N_LAYERS,
+        ENC_DROPOUT,
+        DEC_DROPOUT,
+        glove_inp=None,
+        glove_opt=None,
+    ):
         """[summary]
 
         Arguments:
             nn {[type]} -- [description]
-            input_vocab {[type]} -- [description]
-            output_vocab {[type]} -- [description]
-            embedding_dim {[type]} -- [description]
-            rnn_units {[type]} -- [description]
-            hidden_size {[type]} -- [description]
-            teacher_forcing {[type]} -- [description]
-            bidirectional {[type]} -- [description]
+            INPUT_VOCAB {[type]} -- [description]
+            OUTPUT_VOCAB {[type]} -- [description]
+            ENC_EMB_DIM {[type]} -- [description]
+            DEC_EMB_DIM {[type]} -- [description]
+            HID_DIM {[type]} -- [description]
+            N_LAYERS {[type]} -- [description]
+            ENC_DROPOUT {[type]} -- [description]
+            DEC_DROPOUT {[type]} -- [description]
+
+        Keyword Arguments:
+            glove_inp {[type]} -- [description] (default: {None})
+            glove_opt {[type]} -- [description] (default: {None})
         """        
-        super(Seq2seq,self).__init__()  
-        self.input_vocab=input_vocab
-        self.output_vocab=output_vocab
-        self.teacher_forcing=teacher_forcing
-        self.encoder=Encoder(input_vocab,embedding_dim=embedding_dim,encoder_units=rnn_units,hidden_size=hidden_size,bidirectional=bidirectional)
-        self.decoder=Decoder(output_vocab,embedding_dim=embedding_dim,decoder_units=rnn_units,hidden_size=hidden_size,bidirectional=bidirectional)
-        self.template_zero=Parameter(torch.zeros(1),requires_grad=False)
-        
+        super(Seq2seq, self).__init__()
+        self.encoder = Encoder(
+            INPUT_VOCAB,
+            ENC_EMB_DIM,
+            HID_DIM,
+            N_LAYERS,
+            ENC_DROPOUT,
+            embedding=glove_inp,
+        )
+        self.decoder = Decoder(
+            OUTPUT_VOCAB,
+            DEC_EMB_DIM,
+            HID_DIM,
+            N_LAYERS,
+            DEC_DROPOUT,
+            embedding=glove_opt,
+        )
+        self.template_zeros=Parameter(torch.zeros(1),requires_grad=True)
 
-    def forward(self,input,target,teacher_forcing=True):        
-        # target_len=sum(torch.sum(target,dim=0)==0).item()
-        target_len=target.shape[-1]
-        # print(target_len)
-        batch_size=input.shape[0]
-        final_opt=self.template_zero.repeat(target_len,batch_size,self.output_vocab)
-        enc_output,enc_hidden=self.encoder(input)
-        decoder_input=target[:,0]
-        for t in range(1,target_len):
-            pred,dec_opt,dec_hidden=self.decoder(decoder_input,enc_hidden)
-            enc_hidden=dec_hidden
-            top1=pred.argmax(dim=2)
-            final_opt[t-1]=pred
-            decoder_input=target[:,t]
-            if teacher_forcing:
-                teacher_force=random.random()<self.teacher_forcing
-                if teacher_force:
-                    decoder_input=top1                
-        return final_opt
+    @torch.jit.script_method
+    def forward(self, src, trg):
+        """[summary]
 
-    def infer(self,input,target_lang,input_lang,max_size=40):
-        input=input_lang.encode(input)
-        input=torch.tensor(input).to(self.device).view(1,-1)
-        output=[]
-        enc_output,hidden=self.encoder(input,self.device)
-        decoder_input=torch.tensor([target_lang.word2idx[target_lang.special["init_token"]]]).to(self.device)
-        out_word=target_lang.special["init_token"]
-        while out_word!=target_lang.special["eos_token"] and len(output)<=max_size:
-            pred,dec_opt,dec_hidden=self.decoder(decoder_input,hidden,self.device)
-            hidden=dec_hidden
-            topk=pred.squeeze(1).topk(5)
-            topk_index=topk.indices.squeeze(0).tolist()
-            ind=0
-            while ((topk_index[ind] in [target_lang.word2idx[target_lang.special["pad_token"]],target_lang.word2idx[target_lang.special["init_token"]]]) or (len(output)<3 and topk_index[ind] in [target_lang.word2idx[target_lang.special["eos_token"]],target_lang.word2idx[target_lang.special["init_token"]]])):
-                ind+=1
-            top1_index=topk_index[ind]
-            try:
-                out_word=target_lang.idx2word[top1_index]
-            except:
-                out_word=target_lang.special["unk_token"]
-            output.append(out_word)
-            decoder_inp=pred[0,0,top1_index]
-        return output
+        Arguments:
+            src {[type]} -- [description]
+            trg {[type]} -- [description]
 
+        Keyword Arguments:
+            teacher_forcing_ratio {float} -- [description] (default: {0.5})
 
-    def init_weights(self):
-        for name, param in self.named_parameters():
-            nn.init.uniform_(param.data, -0.08, 0.08)
+        Returns:
+            [type] -- [description]
+        """        
+        batch_size = trg.shape[0]
+        trg_len = trg.shape[1]
+        trg_vocab_size = self.decoder.output_dim
+        outputs = self.template_zeros.repeat(trg_len, batch_size, trg_vocab_size)
+        hidden, cell = self.encoder(src)
+        input = trg[:, 0]
+        for t in range(1, trg_len):
+            output, hidden, cell = self.decoder(input, hidden, cell)
+            outputs[t] = output
+            teacher_force = torch.rand(1).item() < torch.tensor(0.8)
+            top1 = output.argmax(1)
+            input = trg[:, t] if teacher_force else top1
+        return outputs
+
+    def decode(self, input, inpLang, optLang, max_len=10):
+        """[summary]
+
+        Arguments:
+            input {[type]} -- [description]
+            inpLang {[type]} -- [description]
+            optLang {[type]} -- [description]
+
+        Keyword Arguments:
+            max_len {int} -- [description] (default: {10})
+
+        Returns:
+            [type] -- [description]
+        """        
+        stop_token = optLang.word2idx[optLang.special["eos_token"]]
+        start_token = optLang.word2idx[optLang.special["init_token"]]
+        src = (
+            torch.tensor(inpLang.encode(input), device=self.device)
+            .unsqueeze(1)
+            .transpose(0, 1)
+        )
+        batch_size = src.shape[1]
+        trg_vocab_size = self.decoder.output_dim
+        hidden, cell = self.encoder(src)
+        input = torch.tensor(start_token, device=self.device).unsqueeze(0)
+        stop = False
+        outputs = []
+        while not stop:
+            output, hidden, cell = self.decoder(input, hidden, cell)
+            top1 = output.argmax(1)
+            topk = torch.topk(output, 5)
+            input = top1
+            if top1.item() == stop_token or len(outputs) > max_len:
+                stop = True
+            outputs.append(top1.item())
+        return " ".join(optLang.decode(outputs))
+
+    def batch_decode(self, input, inpLang, optLang, max_len=10):
+        """[summary]
+
+        Arguments:
+            input {[type]} -- [description]
+            inpLang {[type]} -- [description]
+            optLang {[type]} -- [description]
+
+        Keyword Arguments:
+            max_len {int} -- [description] (default: {10})
+
+        Returns:
+            [type] -- [description]
+        """        
+        stop_token = optLang.word2idx[optLang.special["eos_token"]]
+        start_token = optLang.word2idx[optLang.special["init_token"]]
+        src = torch.tensor(inpLang.encode_batch(input), device=self.device)
+        batch_size = src.shape[0]
+        trg_vocab_size = self.decoder.output_dim
+        hidden, cell = self.encoder(src)
+        input = torch.tensor([start_token] * batch_size, device=self.device)
+        stop = False
+        outputs = []
+        while not stop:
+            output, hidden, cell = self.decoder(input, hidden, cell)
+            top1 = output.argmax(1)
+            topk = torch.topk(output, 5)
+            input = top1
+            if len(outputs) > max_len:
+                stop = True
+            outputs.append(top1.cpu().tolist())
+        outputs = np.array(outputs).transpose().tolist()
+        return [" ".join(i) for i in optLang.decode_batch(outputs)]

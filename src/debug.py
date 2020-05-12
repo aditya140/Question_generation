@@ -5,6 +5,11 @@ from dataPrep.data_loader import QGenDataset
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.optim as optim
+from pytorch_lightning.loggers import TensorBoardLogger
+logger = TensorBoardLogger('lightning_logs', name="mnist")
+import torch
+
+from torch.utils.tensorboard import SummaryWriter
 
 params={
 
@@ -15,12 +20,11 @@ params={
     "rnn_units":1,
     "hidden_size":128,
     "batch_size":64,
-    "teacher_forcing":0.8,
-    "bidirectional":False,
     "squad":True,
     "tokenizer":"spacy",
     "max_len":60,
     "sample":False,
+    "dropout":0.3,
 }
 
 hparams=argparse.Namespace(**params)
@@ -29,17 +33,19 @@ class Seq2seq_pl(pl.LightningModule):
     def __init__(self,hparams):
         super(Seq2seq_pl,self).__init__()
         self.hparams=hparams
-        self.model=Seq2seq(input_vocab=hparams.input_vocab,
-                        output_vocab=hparams.input_vocab,
-                        embedding_dim=hparams.embedding_dim,
-                        rnn_units=hparams.rnn_units,
-                        hidden_size=hparams.hidden_size,
-                        teacher_forcing=hparams.teacher_forcing,
-                        bidirectional=hparams.bidirectional)
+        self.model=Seq2seq(INPUT_VOCAB=hparams.input_vocab,
+        OUTPUT_VOCAB=hparams.output_vocab,
+        ENC_EMB_DIM=hparams.embedding_dim,
+        DEC_EMB_DIM=hparams.embedding_dim,
+        HID_DIM=hparams.hidden_size,
+        N_LAYERS=hparams.rnn_units,
+        ENC_DROPOUT=hparams.dropout,
+        DEC_DROPOUT=hparams.dropout,
+        )
 
 
-    def forward(self,input,target,teacher_forcing):
-        return self.model.forward(input,target,teacher_forcing)
+    def forward(self,input,target):
+        return self.model.forward(input,target)
 
     def prepare_data(self):
         QGen=QGenDataset()
@@ -97,7 +103,16 @@ class Seq2seq_pl(pl.LightningModule):
 def main():
     model=Seq2seq_pl(hparams)
     model.prepare_data()
-    trainer=pl.Trainer(max_epochs=2,gpus=1,)
+    # writer = SummaryWriter("tb_logs/mnist/")
+    test_inp=next(iter(model.val_dataloader()))
+    print(test_inp[0].shape,test_inp[1].shape)
+    model.eval()
+    print(model(test_inp[0],test_inp[1]))
+    traced_script_module = torch.jit.trace(model, (test_inp[0],test_inp[1]))
+    # writer.add_graph(model,(test_inp[0],test_inp[1]),verbose=True)
+    # writer.close()
+
+    trainer=pl.Trainer(max_epochs=2,gpus=1,logger=logger)
     trainer.fit(model)
 
 if __name__ == '__main__':
