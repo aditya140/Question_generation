@@ -1,1 +1,4 @@
 **/*.pyc
+src/CacheFunc/cache_registry/*
+lightning_logs/*
+lightning_logs

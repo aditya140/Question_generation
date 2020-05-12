@@ -4,9 +4,8 @@ import torch
 from torch.nn import Parameter
 
 class Encoder(nn.Module):
-    def __init__(self,vocab_size,embedding_dim,encoder_units,hidden_size,batch_size,bidirectional):
+    def __init__(self,vocab_size,embedding_dim,encoder_units,hidden_size,bidirectional):
         super(Encoder,self).__init__()
-        self.batch_size=batch_size
         self.hidden_size=hidden_size
         self.vocab_size=vocab_size
         self.bidirectional=bidirectional
@@ -25,9 +24,8 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self,vocab_size,embedding_dim,decoder_units,hidden_size,batch_size,bidirectional):
+    def __init__(self,vocab_size,embedding_dim,decoder_units,hidden_size,bidirectional):
         super(Decoder,self).__init__()
-        self.batch_size=batch_size
         self.hidden_size=hidden_size
         self.vocab_size=vocab_size
         self.bidirectional=bidirectional
@@ -49,7 +47,7 @@ class Seq2seq(nn.Module):
     """[summary]
     Seq2seq Model 
     """    
-    def __init__(self,input_vocab,output_vocab,embedding_dim,rnn_units,hidden_size,batch_size,teacher_forcing,bidirectional):
+    def __init__(self,input_vocab,output_vocab,embedding_dim,rnn_units,hidden_size,teacher_forcing,bidirectional):
         """[summary]
 
         Arguments:
@@ -59,17 +57,15 @@ class Seq2seq(nn.Module):
             embedding_dim {[type]} -- [description]
             rnn_units {[type]} -- [description]
             hidden_size {[type]} -- [description]
-            batch_size {[type]} -- [description]
             teacher_forcing {[type]} -- [description]
             bidirectional {[type]} -- [description]
         """        
         super(Seq2seq,self).__init__()  
         self.input_vocab=input_vocab
         self.output_vocab=output_vocab
-        self.batch_size=batch_size
         self.teacher_forcing=teacher_forcing
-        self.encoder=Encoder(input_vocab,embedding_dim=embedding_dim,encoder_units=rnn_units,hidden_size=hidden_size,batch_size=batch_size,bidirectional=bidirectional)
-        self.decoder=Decoder(output_vocab,embedding_dim=embedding_dim,decoder_units=rnn_units,hidden_size=hidden_size,batch_size=batch_size,bidirectional=bidirectional)
+        self.encoder=Encoder(input_vocab,embedding_dim=embedding_dim,encoder_units=rnn_units,hidden_size=hidden_size,bidirectional=bidirectional)
+        self.decoder=Decoder(output_vocab,embedding_dim=embedding_dim,decoder_units=rnn_units,hidden_size=hidden_size,bidirectional=bidirectional)
         self.template_zero=Parameter(torch.zeros(1),requires_grad=False)
         
 
@@ -77,7 +73,8 @@ class Seq2seq(nn.Module):
         # target_len=sum(torch.sum(target,dim=0)==0).item()
         target_len=target.shape[-1]
         # print(target_len)
-        final_opt=self.template_zero.repeat(target_len,self.batch_size,self.output_vocab)
+        batch_size=input.shape[0]
+        final_opt=self.template_zero.repeat(target_len,batch_size,self.output_vocab)
         enc_output,enc_hidden=self.encoder(input)
         decoder_input=target[:,0]
         for t in range(1,target_len):
