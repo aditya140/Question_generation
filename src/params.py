@@ -13,7 +13,7 @@ __SEQ2SEQ__={
     "squad":True,
     "tokenizer":"spacy",
     "max_len":80,
-    "sample":True,
+    "sample":False,
     "dropout":0.3,
     "val_split":0.1,
     "test_split":0.1,

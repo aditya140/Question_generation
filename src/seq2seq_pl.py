@@ -68,16 +68,15 @@ class Seq2seq_optuna(pl.LightningModule):
     def __init__(self, trial, hparams):
         super(Seq2seq_optuna,self).__init__()
         self.hparams=hparams
-        n_layers = trial.suggest_int("n_layers", 1, 3)
         dropout = trial.suggest_uniform("dropout", 0.2, 0.5)
-        emb_dim = trial.suggest_int("emb_dim",150,400)
-        hid_dim = trial.suggest_int("hid_dim",100,300)
+        emb_dim = trial.suggest_int("emb_dim",100,200)
+        hid_dim = trial.suggest_int("hid_dim",50,100)
         self.model=Seq2seq(input_vocab=hparams.input_vocab,
                         output_vocab=hparams.output_vocab,
                         enc_emb_dim=emb_dim,
                         dec_emb_dim=emb_dim,
                         hidden_size=hid_dim,
-                        rnn_units=n_layers,
+                        rnn_units=hparams.rnn_units,
                         enc_dropout=dropout,
                         dec_dropout=dropout,)
     def forward(self,input,target):
@@ -150,7 +149,7 @@ def objective(trial):
         val_percent_check=PERCENT_VALID_EXAMPLES,
         checkpoint_callback=checkpoint_callback,
         max_epochs=hp.epochs,
-        gpus=0 if torch.cuda.is_available() else None,
+        gpus=1 if torch.cuda.is_available() else None,
         callbacks=[metrics_callback],
         early_stop_callback=PyTorchLightningPruningCallback(trial, monitor="val_loss"),
     )
