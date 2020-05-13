@@ -45,6 +45,10 @@ class Seq2seq_pl(pl.LightningModule):
         pred=pred.permute(1,2,0)
         loss = self.cross_entropy_loss(pred,trg)
         return {'val_loss': loss}
+        
+    def validation_epoch_end(self, outputs):
+        loss = sum(x["val_loss"] for x in outputs) / len(outputs)
+        return {"log": {"val_loss": loss}}
 
     def training_step(self,train_batch,idx):
         x,y,x_l= train_batch
