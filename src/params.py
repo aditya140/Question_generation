@@ -13,7 +13,7 @@ __SEQ2SEQ__={
     "squad":True,
     "tokenizer":"spacy",
     "max_len":80,
-    "sample":False,
+    "sample":True,
     "dropout":0.3,
     "val_split":0.1,
     "test_split":0.1,
@@ -21,7 +21,9 @@ __SEQ2SEQ__={
     "dec_emb_dim":300,
     "enc_dropout":0.3,
     "dec_dropout":0.3,
-    "epochs":5,
+    "epochs":1,
+    "trial_path":"./src/experiment/seq2seq/",
+    "prune":True
 }
 SEQ2SEQ_PARAMS=argparse.Namespace(**__SEQ2SEQ__)
 

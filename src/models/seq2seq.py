@@ -65,10 +65,6 @@ class Seq2seq(nn.Module):
             rnn_units {[type]} -- [description]
             enc_dropout {[type]} -- [description]
             dec_dropout {[type]} -- [description]
-
-        Keyword Arguments:
-            glove_inp {[type]} -- [description] (default: {None})
-            glove_opt {[type]} -- [description] (default: {None})
         """        
         super(Seq2seq, self).__init__()
         self.encoder = Encoder(
