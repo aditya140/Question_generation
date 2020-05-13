@@ -1,78 +1,44 @@
+from params import SEQ2SEQ_PARAMS
 from models.seq2seq import Seq2seq
 import pytorch_lightning as pl
-import argparse
-from dataPrep.data_loader import QGenDataset
-from torch.utils.data import DataLoader
+from utils import save_model,get_torch_device,epoch_time
+from dataloader import SimpleDataloader
 import torch.nn.functional as F
 import torch.optim as optim
 from pytorch_lightning.loggers import TensorBoardLogger
 logger = TensorBoardLogger('lightning_logs', name="mnist")
 import torch
 
-from torch.utils.tensorboard import SummaryWriter
+hp = SEQ2SEQ_PARAMS
+device=get_torch_device()
 
-params={
 
-    "lr":1e-3,
-    "input_vocab":10000,
-    "output_vocab":10000,
-    "embedding_dim":300,
-    "rnn_units":1,
-    "hidden_size":128,
-    "batch_size":64,
-    "squad":True,
-    "tokenizer":"spacy",
-    "max_len":60,
-    "sample":False,
-    "dropout":0.3,
-}
-
-hparams=argparse.Namespace(**params)
 
 class Seq2seq_pl(pl.LightningModule):
     def __init__(self,hparams):
         super(Seq2seq_pl,self).__init__()
         self.hparams=hparams
-        self.model=Seq2seq(INPUT_VOCAB=hparams.input_vocab,
-        OUTPUT_VOCAB=hparams.output_vocab,
-        ENC_EMB_DIM=hparams.embedding_dim,
-        DEC_EMB_DIM=hparams.embedding_dim,
-        HID_DIM=hparams.hidden_size,
-        N_LAYERS=hparams.rnn_units,
-        ENC_DROPOUT=hparams.dropout,
-        DEC_DROPOUT=hparams.dropout,
-        )
+        self.model=Seq2seq(**hparams)
 
 
     def forward(self,input,target):
         return self.model.forward(input,target)
 
     def prepare_data(self):
-        QGen=QGenDataset()
-
-        (self.train_data_set,
-        self.val_data_set,
-        self.test_data_set,
-        self.inpLang,self.optLang)=QGen.getData(input_vocab=self.hparams.input_vocab,
-                                    output_vocab=self.hparams.output_vocab,
-                                    max_len=self.hparams.max_len,
-                                    tokenizer=self.hparams.tokenizer,
-                                    sample=self.hparams.sample,
-                                    batch_size=self.hparams.batch_size,
-                                    squad=self.hparams.squad)
+        data = SimpleDataloader(**vars(self.hp))
 
 
     def train_dataloader(self):
-        return DataLoader(self.train_data_set,batch_size=self.hparams.batch_size,num_workers=10)
+        return self.data.get_train_dataloader()
 
     def val_dataloader(self):
-        return DataLoader(self.val_data_set,batch_size=self.hparams.batch_size,num_workers=10)
+        return self.data.get_val_dataloader()
     
     def validation_step(self, val_batch , idx):
         x,y,x_l = val_batch
         src=x
         trg=y
-        output=self.forward(src,trg,teacher_forcing=False)
+        output=self.forward(src,trg)
         output_dim = output.shape[-1]
         output = output[1:,:].contiguous().view(-1, output_dim)
         trg = trg[:,1:].contiguous().view(-1)
@@ -93,7 +59,7 @@ class Seq2seq_pl(pl.LightningModule):
         return {'loss': loss, 'log': logs}
 
     def cross_entropy_loss(self, input, target):
-        return F.cross_entropy(input,target)
+        return F.cross_entropy(input,target,ignore_index=0)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.hparams.lr)

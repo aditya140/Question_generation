@@ -4,6 +4,16 @@ import torch
 import re
 import wget
 import os
+import time
+
+
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
+
+    
 def max_length(tensor):
     return max(len(t) for t in tensor)
 
@@ -96,3 +106,6 @@ def loadGloveModel(gloveFile="./glove/glove.6B.300d.txt"):
                 print(f"Vect : \n{splitLine[1:]}")
         print("Done.",len(model)," words loaded!")
     return model
+
+def save_model(model,path):
+    torch.save(model.state_dict(),path)

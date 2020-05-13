@@ -6,15 +6,12 @@ import numpy as np
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_dim, emb_dim, hid_dim, n_layers, dropout, embedding=None):
+    def __init__(self, input_dim, emb_dim, hidden_size, rnn_units, dropout):
         super(Encoder, self).__init__()
-        self.hid_dim = hid_dim
-        self.n_layers = n_layers
+        self.hidden_size = hidden_size
+        self.rnn_units = rnn_units
         self.embedding = nn.Embedding(input_dim, emb_dim)
-        if embedding != None:
-            self.embedding.load_state_dict({"weight": embedding})
-            self.embedding.weight.requires_grad = False
-        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout=dropout)
+        self.rnn = nn.LSTM(emb_dim, hidden_size, rnn_units, dropout=dropout)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, src):
@@ -25,17 +22,14 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, output_dim, emb_dim, hid_dim, n_layers, dropout, embedding=None):
+    def __init__(self, output_dim, emb_dim, hidden_size, rnn_units, dropout, embedding=None):
         super(Decoder, self).__init__()
         self.output_dim = output_dim
-        self.hid_dim = hid_dim
-        self.n_layers = n_layers
+        self.hidden_size = hidden_size
+        self.rnn_units = rnn_units
         self.embedding = nn.Embedding(output_dim, emb_dim)
-        if embedding != None:
-            self.embedding.load_state_dict({"weight": embedding})
-            self.embedding.weight.requires_grad = False
-        self.rnn = nn.LSTM(emb_dim, hid_dim, n_layers, dropout=dropout)
-        self.fc = nn.Linear(hid_dim, output_dim)
+        self.rnn = nn.LSTM(emb_dim, hidden_size, rnn_units, dropout=dropout)
+        self.fc = nn.Linear(hidden_size, output_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input, hidden, cell):
@@ -46,32 +40,31 @@ class Decoder(nn.Module):
         return prediction, hidden, cell
 
 
-class Seq2seq(torch.jit.ScriptModule):
+class Seq2seq(nn.Module):
     def __init__(
         self,
-        INPUT_VOCAB,
-        OUTPUT_VOCAB,
-        ENC_EMB_DIM,
-        DEC_EMB_DIM,
-        HID_DIM,
-        N_LAYERS,
-        ENC_DROPOUT,
-        DEC_DROPOUT,
-        glove_inp=None,
-        glove_opt=None,
+        input_vocab,
+        output_vocab,
+        enc_emb_dim,
+        dec_emb_dim,
+        hidden_size,
+        rnn_units,
+        enc_dropout,
+        dec_dropout,
+        **kwargs
     ):
         """[summary]
 
         Arguments:
             nn {[type]} -- [description]
-            INPUT_VOCAB {[type]} -- [description]
-            OUTPUT_VOCAB {[type]} -- [description]
-            ENC_EMB_DIM {[type]} -- [description]
-            DEC_EMB_DIM {[type]} -- [description]
-            HID_DIM {[type]} -- [description]
-            N_LAYERS {[type]} -- [description]
-            ENC_DROPOUT {[type]} -- [description]
-            DEC_DROPOUT {[type]} -- [description]
+            input_vocab {[type]} -- [description]
+            output_vocab {[type]} -- [description]
+            enc_emb_dim {[type]} -- [description]
+            dec_emb_dim {[type]} -- [description]
+            hidden_size {[type]} -- [description]
+            rnn_units {[type]} -- [description]
+            enc_dropout {[type]} -- [description]
+            dec_dropout {[type]} -- [description]
 
         Keyword Arguments:
             glove_inp {[type]} -- [description] (default: {None})
@@ -79,24 +72,21 @@ class Seq2seq(torch.jit.ScriptModule):
         """        
         super(Seq2seq, self).__init__()
         self.encoder = Encoder(
-            INPUT_VOCAB,
-            ENC_EMB_DIM,
-            HID_DIM,
-            N_LAYERS,
-            ENC_DROPOUT,
-            embedding=glove_inp,
+            input_vocab,
+            enc_emb_dim,
+            hidden_size,
+            rnn_units,
+            enc_dropout,
         )
         self.decoder = Decoder(
-            OUTPUT_VOCAB,
-            DEC_EMB_DIM,
-            HID_DIM,
-            N_LAYERS,
-            DEC_DROPOUT,
-            embedding=glove_opt,
+            output_vocab,
+            dec_emb_dim,
+            hidden_size,
+            rnn_units,
+            dec_dropout,
         )
         self.template_zeros=Parameter(torch.zeros(1),requires_grad=True)
 
-    @torch.jit.script_method
     def forward(self, src, trg):
         """[summary]
 
@@ -194,3 +184,14 @@ class Seq2seq(torch.jit.ScriptModule):
             outputs.append(top1.cpu().tolist())
         outputs = np.array(outputs).transpose().tolist()
         return [" ".join(i) for i in optLang.decode_batch(outputs)]
+
+    def init_weights(self):
+        for name, param in self.named_parameters():
+            if 'weight' in name:
+                nn.init.normal_(param.data, mean=0, std=0.01)
+            else:
+                nn.init.constant_(param.data, 0)
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+

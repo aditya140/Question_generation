@@ -1,0 +1,20 @@
+Load Failure :  43498
+Loaded: 86300 samples
+The model has 35,180,321 trainable parameters
+Seq2seq(
+  (encoder): Encoder(
+    (embedding): Embedding(30000, 300)
+    (rnn): LSTM(300, 128, dropout=0.3)
+    (dropout): Dropout(p=0.3, inplace=False)
+  )
+  (decoder): Decoder(
+    (embedding): Embedding(60000, 300)
+    (rnn): LSTM(300, 128, dropout=0.3)
+    (fc): Linear(in_features=128, out_features=60000, bias=True)
+    (dropout): Dropout(p=0.3, inplace=False)
+  )
+)
+Starting Loss:  11.002296752617008
+----------
+	Epoch : 0
+	Training for 1093 iter
