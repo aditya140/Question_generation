@@ -1,4 +1,8 @@
+import sys
+sys.path.append("./src/")
+
 import tpu_setup
+
 import numpy as np
 import os
 import time

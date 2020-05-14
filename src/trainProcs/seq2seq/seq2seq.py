@@ -1,3 +1,6 @@
+import sys
+sys.path.append("./src/")
+
 from dataloader import SimpleDataloader
 from params import SEQ2SEQ_PARAMS
 from models.seq2seq import Seq2seq,count_parameters,Encoder,Decoder
@@ -11,9 +14,14 @@ import numpy as np
 import math
 import sys
 import time
+import glob
 
 hp = SEQ2SEQ_PARAMS
 device=get_torch_device()
+version=0
+versions=[int(i.split("/")[-2]) for i in glob.glob(hp.save_path+"/*/")]
+if versions!=[]:
+    version=max(versions)+1
 
 
 
@@ -97,7 +105,8 @@ for ep in range(hp.epochs):
     train_loss=train(model,train_dataloader,adamW,CCE,device)
     val_loss=evaluate(model,val_dataloader,CCE,device)
     if val_loss<best_model_loss:
-        save_model(model,hp.save_path)
+        to_save={"model":model,"inpLang":data.inpLang,"optLang":data.optLang,"params":vars(hp),"version":version}
+        save_model(path=hp.save_path,name="seq2seq.pt",**to_save)
         best_model_loss=val_loss
     e_time=time.time()
     epoch_mins, epoch_secs = epoch_time(st_time, e_time)

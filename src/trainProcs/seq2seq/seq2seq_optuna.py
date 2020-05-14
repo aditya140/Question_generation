@@ -1,4 +1,8 @@
+
 from params import SEQ2SEQ_PARAMS
+import sys
+sys.path.append("./src/")
+
 from models.seq2seq import Seq2seq
 import pytorch_lightning as pl
 from utils import save_model,get_torch_device,epoch_time

@@ -1,3 +1,6 @@
+import sys
+sys.path.append("./src/")
+
 from params import SEQ2SEQ_PARAMS
 from models.seq2seq import Seq2seq
 import pytorch_lightning as pl

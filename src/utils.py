@@ -5,6 +5,9 @@ import re
 import wget
 import os
 import time
+import glob
+import pickle
+import json
 
 
 def epoch_time(start_time, end_time):
@@ -107,5 +110,35 @@ def loadGloveModel(gloveFile="./glove/glove.6B.300d.txt"):
         print("Done.",len(model)," words loaded!")
     return model
 
-def save_model(model,path):
-    torch.save(model.state_dict(),path)
+def save_model(path,name,params,model,**kwargs):
+    if "version" not in kwargs.keys():
+        version=0
+        versions=[int(i.split("/")[-2]) for i in glob.glob(path+"/*/")]
+        if versions!=[]:
+            version=max(versions)+1
+    else:
+        version=kwargs["version"]
+    path=path+f"/{str(version)}/"
+    if not os.path.exists(path):
+        os.mkdir(path)
+    torch.save(model.state_dict(),path+name)
+    if "inpLang" in kwargs.keys():
+        with open(path+"inpLang.p",'wb') as f:
+            pickle.dump(kwargs["inpLang"],f)
+    if "optLang" in kwargs.keys():
+        with open(path+"optLang.p",'wb') as f:
+            pickle.dump(kwargs["optLang"],f)
+    with open(path+"hp.json",'w') as f:
+        json.dump(params,f)
+
+def load_model(name,version):
+    path=f"./src/saved_models/{name}/{version}"
+    with open(path+"/hp.json",'r') as f:
+        hp=json.load(f)
+    with open(path+"/inpLang.p",'rb') as f:
+        inpLang=pickle.load(f)
+    with open(path+"/optLang.p",'rb') as f:
+        optLang=pickle.load(f)
+    state_dict=torch.load(path+f"/{name}.pt")
+    return state_dict,inpLang,optLang,hp
+    

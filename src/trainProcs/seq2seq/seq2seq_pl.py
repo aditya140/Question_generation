@@ -1,3 +1,5 @@
+import sys
+sys.path.append("./src/")
 from params import SEQ2SEQ_PARAMS
 from models.seq2seq import Seq2seq
 import pytorch_lightning as pl
@@ -79,6 +81,5 @@ def train_model():
 
 
 if __name__ == '__main__':
-    # train_model()
-    hparam_tuning()
+    train_model()
     

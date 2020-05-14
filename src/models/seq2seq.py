@@ -109,6 +109,9 @@ class Seq2seq(nn.Module):
             top1 = output.argmax(1)
             input = trg[:, t] if teacher_force else top1
         return outputs
+    def beam_decode(self,):
+        pass
+
 
     def decode(self, input, inpLang, optLang, max_len=10):
         """[summary]
