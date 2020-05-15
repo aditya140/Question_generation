@@ -5,29 +5,10 @@ from torch.nn import Parameter
 import numpy as np
 import heapq
 import torch.nn.functional as F
+import sys
+sys.path.append("./src/")
+from inference.inference_helpers import Beam
 
-class Beam:
-    """
-    maintains a heap of size(beam_width), always removes lowest scoring nodes.
-    """
-
-    def __init__(self, beam_width):
-        self.heap = list()
-        self.beam_width = beam_width
-
-    def add(self, score, sequence, hidden, cell):
-        heapq.heappush(self.heap, (score, sequence, hidden, cell))
-        if len(self.heap) > self.beam_width:
-            heapq.heappop(self.heap)
-
-    def __iter__(self):
-        return iter(self.heap)
-
-    def __len__(self):
-        return len(self.heap)
-
-    def __getitem__(self, idx):
-        return self.heap[idx]
 
 
 class Encoder(nn.Module):
@@ -47,7 +28,9 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, output_dim, emb_dim, hidden_size, rnn_units, dropout, embedding=None):
+    def __init__(
+        self, output_dim, emb_dim, hidden_size, rnn_units, dropout, embedding=None
+    ):
         super(Decoder, self).__init__()
         self.output_dim = output_dim
         self.hidden_size = hidden_size
@@ -90,23 +73,15 @@ class Seq2seq(nn.Module):
             rnn_units {[type]} -- [description]
             enc_dropout {[type]} -- [description]
             dec_dropout {[type]} -- [description]
-        """        
+        """
         super(Seq2seq, self).__init__()
         self.encoder = Encoder(
-            input_vocab,
-            enc_emb_dim,
-            hidden_size,
-            rnn_units,
-            enc_dropout,
+            input_vocab, enc_emb_dim, hidden_size, rnn_units, enc_dropout,
         )
         self.decoder = Decoder(
-            output_vocab,
-            dec_emb_dim,
-            hidden_size,
-            rnn_units,
-            dec_dropout,
+            output_vocab, dec_emb_dim, hidden_size, rnn_units, dec_dropout,
         )
-        self.template_zeros=Parameter(torch.zeros(1),requires_grad=True)
+        self.template_zeros = Parameter(torch.zeros(1), requires_grad=True)
 
     def forward(self, src, trg):
         """[summary]
@@ -120,7 +95,7 @@ class Seq2seq(nn.Module):
 
         Returns:
             [type] -- [description]
-        """        
+        """
         batch_size = trg.shape[0]
         trg_len = trg.shape[1]
         trg_vocab_size = self.decoder.output_dim
@@ -135,7 +110,7 @@ class Seq2seq(nn.Module):
             input = trg[:, t] if teacher_force else top1
         return outputs
 
-    def greedy(self,src,start_token,stop_token,max_len=10):
+    def greedy(self, src, start_token, stop_token, max_len=10):
         """[summary]
 
         Arguments:
@@ -164,7 +139,7 @@ class Seq2seq(nn.Module):
             outputs.append(top1.item())
         return outputs
 
-    def greedy_batch(self,src,start_token,stop_token,max_len=10):
+    def greedy_batch(self, src, start_token, stop_token, max_len=10):
         """[summary]
 
         Arguments:
@@ -181,7 +156,9 @@ class Seq2seq(nn.Module):
         batch_size = src.shape[0]
         trg_vocab_size = self.decoder.output_dim
         hidden, cell = self.encoder(src)
-        input = torch.tensor([start_token] * batch_size, device=self.template_zeros.device)
+        input = torch.tensor(
+            [start_token] * batch_size, device=self.template_zeros.device
+        )
         stop = False
         outputs = []
         while not stop:
@@ -195,7 +172,7 @@ class Seq2seq(nn.Module):
         outputs = np.array(outputs).transpose().tolist()
         return outputs
 
-    def beam(self,src,start_token,stop_token,beam_width=3,max_len=10):
+    def beam(self, src, start_token, stop_token, beam_width=3, max_len=10):
         """[summary]
 
         Arguments:
@@ -207,36 +184,45 @@ class Seq2seq(nn.Module):
             beam_width {int} -- [description] (default: {3})
             max_len {int} -- [description] (default: {10})
         """
-        beam=Beam(beam_width)
+        beam = Beam(beam_width)
         batch_size = src.shape[1]
         trg_vocab_size = self.decoder.output_dim
         hidden, cell = self.encoder(src)
-        start_token=torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
-        stop_token=torch.tensor(stop_token).unsqueeze(0).to(self.template_zeros.device)
-        beam.add(score=1.0, sequence=start_token, hidden = hidden, cell=cell)
+        start_token = (
+            torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
+        )
+        stop_token = (
+            torch.tensor(stop_token).unsqueeze(0).to(self.template_zeros.device)
+        )
+        beam.add(score=1.0, sequence=start_token, hidden=hidden, cell=cell)
         for _ in range(max_len):
-            new_beam=Beam(beam_width)
-            for score,seq,hid,cel in beam:
+            new_beam = Beam(beam_width)
+            for score, seq, hid, cel in beam:
                 if not torch.eq(seq[-1:], stop_token):
-                    out,new_hid,new_cel=self.decoder(seq[-1:],hid,cel)
-                    out=F.softmax(out)
-                    out=out.topk(beam_width)
+                    out, new_hid, new_cel = self.decoder(seq[-1:], hid, cel)
+                    out = F.softmax(out,dim=1)
+                    out = out.topk(beam_width)
                     for i in range(beam_width):
-                        new_score=score*out.values[0][i]
-                        new_beam.add(score=new_score,sequence=torch.cat([seq,out.indices[0][i].unsqueeze(0)]),hidden=new_hid,cell=new_cel)
+                        new_score = score * out.values[0][i]
+                        new_beam.add(
+                            score=new_score,
+                            sequence=torch.cat([seq, out.indices[0][i].unsqueeze(0)]),
+                            hidden=new_hid,
+                            cell=new_cel,
+                        )
                 else:
-                    new_beam.add(score=score,sequence=seq,hidden=hid,cell=cel)
-            beam=new_beam
-        opt=[(i.tolist(),seq.tolist()) for i,seq,_,_ in beam]
-        return opt 
+                    new_beam.add(score=score, sequence=seq, hidden=hid, cell=cel)
+            beam = new_beam
+        opt = [(i.tolist(), seq.tolist()) for i, seq, _, _ in beam]
+        return opt
 
     def init_weights(self):
         for name, param in self.named_parameters():
-            if 'weight' in name:
+            if "weight" in name:
                 nn.init.normal_(param.data, mean=0, std=0.01)
             else:
                 nn.init.constant_(param.data, 0)
 
+
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-

@@ -1,10 +1,12 @@
 from dataPrep.dataset import QGenDataset
 from torch.utils.data import DataLoader
 
+
 class SimpleDataloader:
     """[summary]
     Simple Dataloader for Question Generation
-    """    
+    """
+
     def __init__(
         self,
         input_vocab,
@@ -30,8 +32,8 @@ class SimpleDataloader:
             val_split {[type]} -- [description]
             test_split {[type]} -- [description]
             squad {[type]} -- [description]
-        """        
-        self.batch_size=batch_size
+        """
+        self.batch_size = batch_size
         self.qg = QGenDataset()
         (
             self.train_dataset,
@@ -50,9 +52,12 @@ class SimpleDataloader:
         )
 
     def get_train_dataloader(self,):
-        return DataLoader(self.train_dataset,batch_size=self.batch_size,num_workers=10)
-    def get_test_dataloader(self,):
-        return DataLoader(self.test_dataset,batch_size=self.batch_size,num_workers=10)
-    def get_val_dataloader(self,):
-        return DataLoader(self.val_dataset,batch_size=self.batch_size,num_workers=10)
+        return DataLoader(
+            self.train_dataset, batch_size=self.batch_size, num_workers=10
+        )
 
+    def get_test_dataloader(self,):
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=10)
+
+    def get_val_dataloader(self,):
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=10)
