@@ -52,7 +52,27 @@ class GreedyDecoder(Inference):
 
     def greedy(self,inp,max_len=10):
         if isinstance(inp,str):
-            return self.greedy_str(inp)
+            return self.greedy_str(inp,max_len=10)
         if bool(inp) and isinstance(inp, list) and all(isinstance(elem, str) for elem in inp):
-            return self.greedy_batch(inp)
+            return self.greedy_batch(inp,max_len=10)
         
+
+class BeamDecoder(Inference):
+    def __init__(self, model, inpLang, optLang):
+        super().__init__(model, inpLang, optLang)
+
+    def beam_str(self,inp,beam_width=3,max_len=10):
+        src = (
+            torch.tensor(self.encode(inp))
+            .unsqueeze(1)
+            .transpose(0, 1)
+        ).to(self.template_tensor.device)
+        opt=self.model.beam(src,self.decode_start,self.decode_stop,beam_width=beam_width,max_len=max_len)
+        opt=[(i[0],self.decode(i[1])) for i in opt]
+        return opt
+
+    def beam(self,inp,beam_width=3,max_len=10):
+        if isinstance(inp,str):
+            return self.beam_str(inp,beam_width=beam_width,max_len=max_len)
+        if bool(inp) and isinstance(inp, list) and all(isinstance(elem, str) for elem in inp):
+            return [self.beam_str(i,beam_width=beam_width,max_len=max_len) for i in inp]

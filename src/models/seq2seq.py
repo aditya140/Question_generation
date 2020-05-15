@@ -4,6 +4,7 @@ import torch
 from torch.nn import Parameter
 import numpy as np
 import heapq
+import torch.nn.functional as F
 
 class Beam:
     """
@@ -14,8 +15,8 @@ class Beam:
         self.heap = list()
         self.beam_width = beam_width
 
-    def add(self, score, sequence, hidden_state):
-        heapq.heappush(self.heap, (score, sequence, hidden_state))
+    def add(self, score, sequence, hidden, cell):
+        heapq.heappush(self.heap, (score, sequence, hidden, cell))
         if len(self.heap) > self.beam_width:
             heapq.heappop(self.heap)
 
@@ -210,10 +211,24 @@ class Seq2seq(nn.Module):
         batch_size = src.shape[1]
         trg_vocab_size = self.decoder.output_dim
         hidden, cell = self.encoder(src)
-        input = torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
-        print(input)
-        pass
-
+        start_token=torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
+        stop_token=torch.tensor(stop_token).unsqueeze(0).to(self.template_zeros.device)
+        beam.add(score=1.0, sequence=start_token, hidden = hidden, cell=cell)
+        for _ in range(max_len):
+            new_beam=Beam(beam_width)
+            for score,seq,hid,cel in beam:
+                if not torch.eq(seq[-1:], stop_token):
+                    out,new_hid,new_cel=self.decoder(seq[-1:],hid,cel)
+                    out=F.softmax(out)
+                    out=out.topk(beam_width)
+                    for i in range(beam_width):
+                        new_score=score*out.values[0][i]
+                        new_beam.add(score=new_score,sequence=torch.cat([seq,out.indices[0][i].unsqueeze(0)]),hidden=new_hid,cell=new_cel)
+                else:
+                    new_beam.add(score=score,sequence=seq,hidden=hid,cell=cel)
+            beam=new_beam
+        opt=[(i.tolist(),seq.tolist()) for i,seq,_,_ in beam]
+        return opt 
 
     def init_weights(self):
         for name, param in self.named_parameters():
