@@ -92,6 +92,7 @@ def evaluate(model,dataloader,loss_fn,device):
     return np.mean(losses)
 
 
+
 """
 Main Loop
 """

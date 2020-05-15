@@ -1,12 +1,19 @@
 import sys
 sys.path.append("./src/")
-from models.seq2seq import Seq2seq
 import torch
+
+from models.seq2seq import Seq2seq
 from utils import load_model
+from inference_helpers import GreedyDecoder
 
 
-state_dict,inpLang,optLang,hp=load_model(name="seq2seq",version=2)
+state_dict,inpLang,optLang,hp=load_model(name="seq2seq",version=1)
 model=Seq2seq(**hp)
 model.load_state_dict(state_dict)
-print(model)
-print(model.decode("Hello how are you",inpLang,optLang))
+inference=GreedyDecoder(model=model,
+                    inpLang=inpLang,
+                    optLang=optLang)
+
+inference.to(torch.device("cuda"))
+print(inference.greedy("Hello"))
+

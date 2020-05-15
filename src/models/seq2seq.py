@@ -3,6 +3,30 @@ import random
 import torch
 from torch.nn import Parameter
 import numpy as np
+import heapq
+
+class Beam:
+    """
+    maintains a heap of size(beam_width), always removes lowest scoring nodes.
+    """
+
+    def __init__(self, beam_width):
+        self.heap = list()
+        self.beam_width = beam_width
+
+    def add(self, score, sequence, hidden_state):
+        heapq.heappush(self.heap, (score, sequence, hidden_state))
+        if len(self.heap) > self.beam_width:
+            heapq.heappop(self.heap)
+
+    def __iter__(self):
+        return iter(self.heap)
+
+    def __len__(self):
+        return len(self.heap)
+
+    def __getitem__(self, idx):
+        return self.heap[idx]
 
 
 class Encoder(nn.Module):
@@ -109,68 +133,54 @@ class Seq2seq(nn.Module):
             top1 = output.argmax(1)
             input = trg[:, t] if teacher_force else top1
         return outputs
-    def beam_decode(self,):
-        pass
 
-
-    def decode(self, input, inpLang, optLang, max_len=10):
+    def greedy(self,src,start_token,stop_token,max_len=10):
         """[summary]
 
         Arguments:
-            input {[type]} -- [description]
-            inpLang {[type]} -- [description]
-            optLang {[type]} -- [description]
+            src {[type]} -- [description]
+            start_token {[type]} -- [description]
+            stop_token {[type]} -- [description]
 
         Keyword Arguments:
             max_len {int} -- [description] (default: {10})
 
         Returns:
             [type] -- [description]
-        """        
-        stop_token = optLang.word2idx[optLang.special["eos_token"]]
-        start_token = optLang.word2idx[optLang.special["init_token"]]
-        src = (
-            torch.tensor(inpLang.encode(input), device=self.device)
-            .unsqueeze(1)
-            .transpose(0, 1)
-        )
+        """
         batch_size = src.shape[1]
         trg_vocab_size = self.decoder.output_dim
         hidden, cell = self.encoder(src)
-        input = torch.tensor(start_token, device=self.device).unsqueeze(0)
+        input = torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
         stop = False
         outputs = []
         while not stop:
             output, hidden, cell = self.decoder(input, hidden, cell)
             top1 = output.argmax(1)
-            topk = torch.topk(output, 5)
             input = top1
             if top1.item() == stop_token or len(outputs) > max_len:
                 stop = True
             outputs.append(top1.item())
-        return " ".join(optLang.decode(outputs))
+        return outputs
 
-    def batch_decode(self, input, inpLang, optLang, max_len=10):
+    def greedy_batch(self,src,start_token,stop_token,max_len=10):
         """[summary]
 
         Arguments:
-            input {[type]} -- [description]
-            inpLang {[type]} -- [description]
-            optLang {[type]} -- [description]
+            src {[type]} -- [description]
+            start_token {[type]} -- [description]
+            stop_token {[type]} -- [description]
 
         Keyword Arguments:
             max_len {int} -- [description] (default: {10})
 
         Returns:
             [type] -- [description]
-        """        
-        stop_token = optLang.word2idx[optLang.special["eos_token"]]
-        start_token = optLang.word2idx[optLang.special["init_token"]]
-        src = torch.tensor(inpLang.encode_batch(input), device=self.device)
+        """
         batch_size = src.shape[0]
         trg_vocab_size = self.decoder.output_dim
         hidden, cell = self.encoder(src)
-        input = torch.tensor([start_token] * batch_size, device=self.device)
+        input = torch.tensor([start_token] * batch_size, device=self.template_zeros.device)
         stop = False
         outputs = []
         while not stop:
@@ -182,7 +192,28 @@ class Seq2seq(nn.Module):
                 stop = True
             outputs.append(top1.cpu().tolist())
         outputs = np.array(outputs).transpose().tolist()
-        return [" ".join(i) for i in optLang.decode_batch(outputs)]
+        return outputs
+
+    def beam(self,src,start_token,stop_token,beam_width=3,max_len=10):
+        """[summary]
+
+        Arguments:
+            inp {[type]} -- [description]
+            start_token {[type]} -- [description]
+            stop_token {[type]} -- [description]
+
+        Keyword Arguments:
+            beam_width {int} -- [description] (default: {3})
+            max_len {int} -- [description] (default: {10})
+        """
+        beam=Beam(beam_width)
+        batch_size = src.shape[1]
+        trg_vocab_size = self.decoder.output_dim
+        hidden, cell = self.encoder(src)
+        input = torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
+        print(input)
+        pass
+
 
     def init_weights(self):
         for name, param in self.named_parameters():
