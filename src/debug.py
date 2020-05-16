@@ -1,12 +1,11 @@
 import warnings
 
 warnings.filterwarnings("ignore")
-from models.seq2seq import Beam, Seq2seq
-from params import SEQ2SEQ_PARAMS
+from models.transformer import transformer
+from params import TRANSFORMER_PARAMS
 import torch
 
-a = torch.randint(10, (1, 4))
 
-model = Seq2seq(**vars(SEQ2SEQ_PARAMS))
-a = model.beam(a, 0, 1)
-print(a)
+model = transformer(**vars(TRANSFORMER_PARAMS)).cuda()
+print(model)
+print(model(torch.randint(10,(1,100)).cuda(),torch.randint(10,(1,100)).cuda()))
