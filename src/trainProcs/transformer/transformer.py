@@ -3,7 +3,7 @@ import sys
 sys.path.append("./src/")
 
 from dataloader import SimpleDataloader
-from params import SEQ2SEQ_PARAMS
+from params import TRANSFORMER_PARAMS
 from models.transformer import transformer, count_parameters
 from utils import save_model, get_torch_device, epoch_time
 
@@ -32,17 +32,22 @@ data = SimpleDataloader(**vars(hp))
 train_dataloader = data.get_train_dataloader()
 val_dataloader = data.get_val_dataloader()
 test_dataloader = data.get_test_dataloader()
-
+src_pad_idx=data.inpLang.word2idx[data.inpLang.special["pad_token"]]
+trg_pad_idx=data.optLang.word2idx[data.optLang.special["pad_token"]]
 
 """
 Create model
 """
-model = transformer(**vars(hp),src_pad_idx=inpLang.word2idx[inpLang.special["pad_token"]], 
-                 trg_pad_idx=optLang.word2idx[optLang.special["pad_token"]])
-model.init_weights()
+model = transformer(src_pad_idx=src_pad_idx, 
+                trg_pad_idx=trg_pad_idx,
+                **vars(hp),
+                )
+
+model.initialize_weights()
 print(f"The model has {count_parameters(model):,} trainable parameters")
 print(model)
 model.to(device)
+
 
 
 """
@@ -66,9 +71,9 @@ def train(model, dataloader, optimizer, loss_fn, device, print_freq=100):
         src, trg, src_len = batch
         src = src.to(device)
         trg = trg.to(device)
-        pred = model(src, trg[:,:-1])
-        pred = pred.permute(1, 2, 0)
-        loss = loss_fn(pred, trg)
+        pred,_ = model(src, trg[:,:-1])
+        pred = pred.permute(0,2,1)
+        loss = loss_fn(pred, trg[:,1:])
         loss.backward()
         optimizer.step()
         losses.append(loss.item())
@@ -90,9 +95,9 @@ def evaluate(model, dataloader, loss_fn, device):
         src = src.to(device)
         trg = trg.to(device)
         with torch.no_grad():
-            pred = model(src, trg[:,:-1])
-        pred = pred.permute(1, 2, 0)
-        loss = loss_fn(pred, trg)
+            pred,_ = model(src, trg[:,:-1])
+        pred=pred.permute(0,2,1)
+        loss = loss_fn(pred, trg[:,1:])
         losses.append(loss.item())
     return np.mean(losses)
 
@@ -123,7 +128,7 @@ for ep in range(hp.epochs):
     epoch_mins, epoch_secs = epoch_time(st_time, e_time)
     print(
         f"\tTraining Loss : {np.mean(train_loss)}",
-        f"Val Perplexity : {math.exp(np.mean(train_loss))}",
+        f"Train Perplexity : {math.exp(np.mean(train_loss))}",
         sep="\t|\t",
     )
     print(

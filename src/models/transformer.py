@@ -230,8 +230,31 @@ class transformer(nn.Module):
         output, attention = self.decoder(trg, enc_src, trg_mask, src_mask)
         return output, attention
 
+    def initialize_weights(self):
+        if hasattr(self, 'weight') and self.weight.dim() > 1:
+            nn.init.xavier_uniform_(self.weight.data)
+    
+    def greedy(self, src, start_token, stop_token, max_len=100):
+        src_mask = self.make_src_mask(src)
+        enc_src = self.encoder(src, src_mask)
+        trg_tensor = torch.tensor(start_token).unsqueeze(0).unsqueeze(0).to(self.template.device)
+        stop = False
+        while not stop:
+            trg_mask = self.make_trg_mask(trg_tensor)
+            output, attention = self.decoder(trg_tensor, enc_src, trg_mask, src_mask)
+            top1 = output.argmax(2)[:,-1]
+            trg_tensor = torch.cat((trg_tensor,top1.unsqueeze(0)),dim=1)
+            if top1.item() == stop_token or trg_tensor.shape[1] > max_len:
+                stop = True
+        return trg_tensor[0].tolist()
+
+
+
+
 
 
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+

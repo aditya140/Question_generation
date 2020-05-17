@@ -50,7 +50,7 @@ __TRANSFORMER__ =  {
     "dec_pf_dim" : 600,
     "enc_dropout" : 0.1,
     "dec_dropout" : 0.1,
-    "src_pad_idx":0, 
-    "trg_pad_idx":0,
+    "val_split": 0.1,
+    "test_split": 0.1,
 }
 TRANSFORMER_PARAMS = argparse.Namespace(**__TRANSFORMER__)

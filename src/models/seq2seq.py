@@ -125,7 +125,6 @@ class Seq2seq(nn.Module):
             [type] -- [description]
         """
         batch_size = src.shape[1]
-        trg_vocab_size = self.decoder.output_dim
         hidden, cell = self.encoder(src)
         input = torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
         stop = False
@@ -154,7 +153,6 @@ class Seq2seq(nn.Module):
             [type] -- [description]
         """
         batch_size = src.shape[0]
-        trg_vocab_size = self.decoder.output_dim
         hidden, cell = self.encoder(src)
         input = torch.tensor(
             [start_token] * batch_size, device=self.template_zeros.device

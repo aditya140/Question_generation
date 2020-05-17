@@ -122,7 +122,7 @@ for ep in range(hp.epochs):
     epoch_mins, epoch_secs = epoch_time(st_time, e_time)
     print(
         f"\tTraining Loss : {np.mean(train_loss)}",
-        f"Val Perplexity : {math.exp(np.mean(train_loss))}",
+        f"Train Perplexity : {math.exp(np.mean(train_loss))}",
         sep="\t|\t",
     )
     print(
