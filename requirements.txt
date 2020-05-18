@@ -6,3 +6,4 @@ hyperdash
 pytorch_lightning
 transformers
 optuna
+streamlit

@@ -125,6 +125,11 @@ def loadGloveModel(gloveFile="./glove/glove.6B.300d.txt"):
     return model
 
 
+def get_max_version(name):
+    path = f"./src/saved_models/{name}/"
+    versions = [int(i.split("/")[-2]) for i in glob.glob(path + "/*/")]
+    return versions
+
 def save_model(path, name, params, model, **kwargs):
     if "version" not in kwargs.keys():
         version = 0
