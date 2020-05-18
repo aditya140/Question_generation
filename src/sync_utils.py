@@ -1,6 +1,7 @@
 import shutil
 from google.cloud import storage
 import os
+import sys
 
 
 def create_model_zip():
@@ -87,7 +88,11 @@ def sync_download():
     shutil.unpack_archive("./src/lightning_logs.zip",extract_dir="./lightning_logs/")
     delete_zips()
 
-
-sync_download()
+if __name__=="__main__":
+    arg=sys.argv[1:]
+    if arg[0]=="upload":
+        sync_upload()
+    if arg[0]=="download":
+        sync_download()
 
 

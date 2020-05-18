@@ -62,7 +62,7 @@ class GreedyDecoder(Inference):
     def __init__(self, model, inpLang, optLang):
         super(GreedyDecoder, self).__init__(model, inpLang, optLang)
 
-    def greedy_str(self, inp, max_len=10):
+    def greedy_str(self, inp, max_len):
         src = (torch.tensor(self.encode(inp)).unsqueeze(1).transpose(0, 1)).to(
             self.template_tensor.device
         )
@@ -72,7 +72,7 @@ class GreedyDecoder(Inference):
         opt = self.decode(opt)
         return opt
 
-    def greedy_batch(self, inp, max_len=10):
+    def greedy_batch(self, inp, max_len):
         src = (torch.tensor(self.encode_batch(inp))).to(self.template_tensor.device)
         opt = self.model.greedy_batch(
             src, self.decode_start, self.decode_stop, max_len=max_len
@@ -82,20 +82,20 @@ class GreedyDecoder(Inference):
 
     def greedy(self, inp, max_len=10):
         if isinstance(inp, str):
-            return self.greedy_str(inp, max_len=10)
+            return self.greedy_str(inp, max_len=max_len)
         if (
             bool(inp)
             and isinstance(inp, list)
             and all(isinstance(elem, str) for elem in inp)
         ):
-            return self.greedy_batch(inp, max_len=10)
+            return self.greedy_batch(inp, max_len=max_len)
 
 
 class BeamDecoder(Inference):
     def __init__(self, model, inpLang, optLang):
         super().__init__(model, inpLang, optLang)
 
-    def beam_str(self, inp, beam_width=3, max_len=10):
+    def beam_str(self, inp, beam_width, max_len):
         src = (torch.tensor(self.encode(inp)).unsqueeze(1).transpose(0, 1)).to(
             self.template_tensor.device
         )
