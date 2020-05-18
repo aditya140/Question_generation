@@ -240,6 +240,7 @@ class transformer(nn.Module):
         trg_tensor = torch.tensor(start_token).unsqueeze(0).unsqueeze(0).to(self.template.device)
         stop = False
         while not stop:
+            print(trg_tensor.shape)
             trg_mask = self.make_trg_mask(trg_tensor)
             output, attention = self.decoder(trg_tensor, enc_src, trg_mask, src_mask)
             top1 = output.argmax(2)[:,-1]
@@ -247,6 +248,38 @@ class transformer(nn.Module):
             if top1.item() == stop_token or trg_tensor.shape[1] > max_len:
                 stop = True
         return trg_tensor[0].tolist()
+
+    def beam(self, src, start_token, stop_token, beam_width=3, max_len=100):
+        beam = Beam(beam_width)
+        src_mask = self.make_src_mask(src)
+        enc_src = self.encoder(src, src_mask)
+        trg_tensor = torch.tensor(start_token).unsqueeze(0).unsqueeze(0).to(self.template.device)
+        stop_token = (
+            torch.tensor(stop_token).unsqueeze(0).to(self.template.device)
+        )
+        beam.add(score=1.0, sequence=trg_tensor, hidden=None, cell=None)
+
+        for _ in range(max_len):
+            new_beam = Beam(beam_width)
+            for score, seq, _, _ in beam:
+                if not torch.eq(seq.squeeze(0)[-1:], stop_token):
+                    trg_mask = self.make_trg_mask(seq)
+                    out, attention = self.decoder(seq, enc_src, trg_mask, src_mask)
+                    out = F.softmax(out,dim=2)
+                    out = out.topk(beam_width,dim=2)
+                    for i in range(beam_width):
+                        new_score = score * out.values[:,-1][0][i]
+                        new_beam.add(
+                            score=new_score,
+                            sequence=torch.cat([seq, out.indices[:,-1][0][i].unsqueeze(0).unsqueeze(0)],dim=1),
+                            hidden=None,
+                            cell=None,
+                        )
+                else:
+                    new_beam.add(score=score, sequence=seq, hidden=None, cell=None)
+            beam = new_beam
+        opt = [(i.tolist(), seq.tolist()[0]) for i, seq, _, _ in beam]
+        return opt
 
 
 
