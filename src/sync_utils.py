@@ -59,6 +59,7 @@ def download_zips():
 
 def sync_upload():
     print("Zipping Files")
+    remove_checkpoints()
     create_log_zip()
     print("Logs Zipped")
     create_model_zip()
@@ -72,6 +73,12 @@ def sync_upload():
     upload_model_file(model_zip,version+1)
     print("deleting_zips")
     delete_zips()
+
+def remove_checkpoints():
+    for i in os.walk("./lightning_logs"):
+        if i[0].split("/")[-1]=="checkpoints":
+            shutil.rmtree(i[0])
+
 
 
 
