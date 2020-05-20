@@ -13,8 +13,11 @@ from dataloader import SimpleDataloader
 import torch.nn.functional as F
 import torch.optim as optim
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import LearningRateLogger
 import torch
 import os
+
+
 SRC_PAD_IDX = 0
 TRG_PAD_IDX = 0
 
@@ -76,13 +79,16 @@ class transformer_pl(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
-        return optimizer
+        scheduler = {'scheduler': optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1),
+                    'name': 'lr'}
+        return [optimizer],[scheduler]
 
 
 def train_model():
     logger = TensorBoardLogger("lightning_logs", name="transformer")
+    lr_logger = LearningRateLogger()
     model = transformer_pl(hp)
-    trainer = pl.Trainer(max_epochs=hp.epochs, gpus=1, logger=logger, auto_lr_find=False)
+    trainer = pl.Trainer(max_epochs=hp.epochs, gpus=1, logger=logger, auto_lr_find=False,callbacks=[lr_logger])
     trainer.fit(model)
     to_save = {
             "model": model.model,
