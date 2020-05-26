@@ -13,6 +13,7 @@ workflows:
         triggers:
           branches:
             ignore: irrelevant-branch
+            only: train.*
           tags:
             only:
               - train.*
