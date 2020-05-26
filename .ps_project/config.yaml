@@ -14,7 +14,4 @@ workflows:
           branches:
             only:
               - train.*
-          tags:
-            only:
-              - train.*
         
