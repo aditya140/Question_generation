@@ -162,3 +162,9 @@ def load_model(name, version):
         optLang = pickle.load(f)
     state_dict = torch.load(path + f"/{name}.pt")
     return state_dict, inpLang, optLang, hp
+
+def arg_copy(inp,opt):
+    if inp!=None:
+        return inp
+    else:
+        return opt 

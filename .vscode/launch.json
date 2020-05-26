@@ -4,14 +4,14 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "pythonPath": "/usr/bin/python3",
-            "name": "Python: Current File",
+            "name": "Python: with args",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
+            "args": ["--gpu", "--epochs", "10" ,"--lr" ,"1e-5"]
         }
     ]
 }

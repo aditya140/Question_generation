@@ -1,2 +1,3 @@
 nvidia-smi
-python train.py
+python3 test_cuda.py
+python3 src/trainProcs/transformer/transformer.py --gpu --epochs 1 | tee /artifacts/test_log.log
