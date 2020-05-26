@@ -10,10 +10,10 @@ workflows:
           command: bash run.sh
           container: aditya1e0/pytorch_nlp:1
           machineType: "K80"
-      triggers:
-        branches:
-          ignore: irrelevant-branch
-        tags:
-          only:
-            - train.*
+        triggers:
+          branches:
+            ignore: irrelevant-branch
+          tags:
+            only:
+              - train.*
         
