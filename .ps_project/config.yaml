@@ -12,7 +12,6 @@ workflows:
           machineType: "K80"
         triggers:
           branches:
-            ignore: irrelevant-branch
             only:
               - train.*
           tags:
