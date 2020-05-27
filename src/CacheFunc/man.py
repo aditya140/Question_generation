@@ -3,11 +3,15 @@ import os
 import hashlib
 import pickle
 
-CACHE_PATH = "./src/CacheFunc/cache_registry"
+if not  os.path.exists("/temp/cache_registry"):
+    os.mkdir("/temp/cache_registry")
+    open("/temp/cache_registry/registry.json",'r').close()
+
+CACHE_PATH = "/temp/cache_registry"
 
 os.environ["PYTHONHASHSEED"] = "0"
 
-
+print("CWD: ",os.getcwd())
 class Cache:
     def __init__(self):
         self.init_cache_reg()
