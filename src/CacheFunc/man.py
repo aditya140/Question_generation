@@ -4,7 +4,7 @@ import hashlib
 import pickle
 
 if not  os.path.exists("/temp/cache_registry/"):
-    os.mkdirs("/temp/cache_registry/")
+    os.makedirs("/temp/cache_registry/")
     open("/temp/cache_registry/registry.json",'r').close()
 
 CACHE_PATH = "/temp/cache_registry"
