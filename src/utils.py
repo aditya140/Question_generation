@@ -9,6 +9,7 @@ import glob
 import pickle
 import json
 import pandas as pd
+import shutil
 
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
@@ -169,6 +170,37 @@ def load_test_df(name,version):
     df=pd.read_csv(path+'/test_df.csv',index_col=[0])
     return df
 
+def save_test_df(df,name,version):
+    path = f"./src/saved_models/{name}/{version}"
+    df.to_csv(path+'/test_df_metrics.csv')
+    print(' DataFrame Saved')
+
+def save_metrics(metrics,name,version):
+    path = f"./src/saved_models/{name}/{version}"
+    with open(path+'/test_df_metrics.csv', 'w') as fp:
+        json.dump(metrics, fp)
+    print('Metrics Saved')
+
+def save_to_artifactory(name,version):
+    pass
+
+
+def copytree(src, dst, symlinks=False, ignore=None):
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, symlinks, ignore)
+        else:
+            shutil.copy2(s, d)
+
+
+def save_to_artifact(name,version):
+    path = f"./src/saved_models/{name}/{version}"
+    dest = f'/artifacts/{name}/{version}'
+    if not os.path.exists(dest):
+        os.makedirs(dest)
+    copytree(path,dest)
 
 def arg_copy(inp,opt):
     if inp!=None:

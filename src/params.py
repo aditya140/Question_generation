@@ -51,5 +51,6 @@ __TRANSFORMER__ =  {
     "dec_dropout" : 0.1,
     "val_split": 0.1,
     "test_split": 0.1,
+    "to_artifact": False,
 }
 TRANSFORMER_PARAMS = argparse.Namespace(**__TRANSFORMER__)

@@ -7,3 +7,4 @@ pytorch_lightning
 transformers
 optuna
 streamlit
+torchtext

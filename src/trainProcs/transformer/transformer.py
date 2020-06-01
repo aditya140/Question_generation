@@ -5,8 +5,8 @@ sys.path.append("./src/")
 from dataloader import SimpleDataloader
 from params import TRANSFORMER_PARAMS
 from models.transformer import transformer, count_parameters
-from utils import save_model, get_torch_device, epoch_time, arg_copy
-
+from utils import save_model, get_torch_device, epoch_time, arg_copy,save_to_artifact,save_test_df,save_metrics
+from test_metrics.test_model import Model_tester
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -120,11 +120,15 @@ def main(hp):
         df=pd.DataFrame(data)
         return df
 
-    test_df=create_test_df(test_dataloader)
+    def test_model(model,inpLang,optLang,test_df):
+        tester=Model_tester(model,inpLang,optLang,max_len=100)
+        tester.set_inference_mode("greedy")
+        return tester.generate_metrics(test_df)
 
     """
     Main Loop
     """
+    test_df=create_test_df(test_dataloader)
     best_model_loss = float("inf")
     val_loss = evaluate(model, val_dataloader, CCE, device)
     print("Starting Loss: ", val_loss)
@@ -158,6 +162,14 @@ def main(hp):
             sep="\t|\t",
         )
         print(f"\tTime per epoch: {epoch_mins}m {epoch_secs}s")
+    print("Generating Test Metrics")
+    df,metrics=test_model(model,data.inpLang,data.optLang,test_df)
+    save_test_df(df,"transformer",version)
+    save_metrics(metrics,"transformer",version)
+    print(metrics)
+    if hp.to_artifact:
+        save_to_artifact("transformer",version)
+
 
 
 if __name__=="__main__":
@@ -175,6 +187,7 @@ if __name__=="__main__":
     parser.add_argument("--tokenizer",type=str)
     parser.add_argument("--NMT",action='store_true',help='Neural Machine Translation')
     parser.add_argument("--QGEN",action='store_true',help='Question Generation')
+    parser.add_argument("--to_artifact",action='store_true',help="Save to artifacts folder")
 
 
 
@@ -189,6 +202,7 @@ if __name__=="__main__":
     hp.dec_heads = arg_copy(args.att_heads,hp.dec_heads)
     hp.hidden_dim = arg_copy(args.hidden_dim,hp.hidden_dim)
     hp.tokenizer = arg_copy(args.tokenizer,hp.tokenizer)
+    hp.to_artifact = arg_copy(args.to_artifact,hp.to_artifact)
     if args.QGEN:
         hp.squad=True
     if args.NMT:
