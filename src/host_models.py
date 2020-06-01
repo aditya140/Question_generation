@@ -58,7 +58,7 @@ st.markdown("# Output")
 if dec_type=="Greedy":
     st.markdown(" ".join(decoder.greedy(txt,max_len=max_length)))
 elif dec_type=="Beam":
-    outputs = decoder.beam("where dows the ",max_len=max_length,beam_width=beam_size)
+    outputs = decoder.beam(txt,max_len=max_length,beam_width=beam_size)
     for idx,i in enumerate(outputs):
         st.markdown(f"**{str(idx)}**.   "+" ".join(i[1]))
         st.markdown(f" \t Score : ```{i[0]}```")

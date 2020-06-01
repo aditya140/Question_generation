@@ -8,7 +8,7 @@ import time
 import glob
 import pickle
 import json
-
+import pandas as pd
 
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
@@ -150,7 +150,8 @@ def save_model(path, name, params, model, **kwargs):
             pickle.dump(kwargs["optLang"], f)
     with open(path + "hp.json", "w") as f:
         json.dump(params, f)
-
+    if "test_df" in kwargs.keys():
+        kwargs['test_df'].to_csv(path + "test_df.csv")
 
 def load_model(name, version):
     path = f"./src/saved_models/{name}/{version}"
@@ -162,6 +163,12 @@ def load_model(name, version):
         optLang = pickle.load(f)
     state_dict = torch.load(path + f"/{name}.pt")
     return state_dict, inpLang, optLang, hp
+
+def load_test_df(name,version):
+    path = f"./src/saved_models/{name}/{version}"
+    df=pd.read_csv(path+'/test_df.csv')
+    return df
+
 
 def arg_copy(inp,opt):
     if inp!=None:

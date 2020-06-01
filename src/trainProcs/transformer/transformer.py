@@ -17,6 +17,7 @@ import sys
 import time
 import glob
 import argparse
+import pandas as pd
 
 
 
@@ -104,6 +105,22 @@ def main(hp):
             losses.append(loss.item())
         return np.mean(losses)
 
+    
+    """
+    Generate Test Dataframe
+    """
+    def create_test_df(dataloader):
+        data=[]
+        for idx,batch in enumerate(dataloader):
+            inp,opt=batch
+            for i in range(len(inp)):
+                data_dict = {"input":inp[i],"output":opt[i]}
+                data.append(data_dict)
+
+        df=pd.DataFrame(data)
+        return df
+
+    test_df=create_test_df(test_dataloader)
 
     """
     Main Loop
@@ -122,6 +139,7 @@ def main(hp):
                 "model": model,
                 "inpLang": data.inpLang,
                 "optLang": data.optLang,
+                "test_df":test_df,
                 "params": vars(hp),
                 "version": version,
             }
