@@ -167,6 +167,8 @@ class LanguageIndex:
             self.idx2word[s] if s in self.idx2word.keys() else self.special["unk_token"]
             for s in input
         ]
+        if sent[0]==self.special["init_token"] and sent[-1]==self.special["eos_token"]:
+            sent=sent[1:-1]
         if self.tokenizer == "BERT" and to_string:
             return self.bert_tokenizer.convert_tokens_to_string(sent)
         return sent

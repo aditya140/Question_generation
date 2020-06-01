@@ -240,7 +240,6 @@ class transformer(nn.Module):
         trg_tensor = torch.tensor(start_token).unsqueeze(0).unsqueeze(0).to(self.template.device)
         stop = False
         while not stop:
-            print(trg_tensor.shape)
             trg_mask = self.make_trg_mask(trg_tensor)
             output, attention = self.decoder(trg_tensor, enc_src, trg_mask, src_mask)
             top1 = output.argmax(2)[:,-1]

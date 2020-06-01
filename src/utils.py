@@ -166,7 +166,7 @@ def load_model(name, version):
 
 def load_test_df(name,version):
     path = f"./src/saved_models/{name}/{version}"
-    df=pd.read_csv(path+'/test_df.csv')
+    df=pd.read_csv(path+'/test_df.csv',index_col=[0])
     return df
 
 
