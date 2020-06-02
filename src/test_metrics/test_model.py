@@ -18,7 +18,6 @@ tqdm.pandas()
 def bleu_metric(ref,candidate,wt=1):
     weight=[1/wt]*(wt)+[0]*(4-wt)
     score = get_bleu( candidate.split(' '), ref.split(" "))
-    print(score)
     return score
  
 def unicode_to_ascii(s):
