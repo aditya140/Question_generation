@@ -52,5 +52,6 @@ __TRANSFORMER__ =  {
     "val_split": 0.1,
     "test_split": 0.1,
     "to_artifact": False,
+    "auto_lr_find":False
 }
 TRANSFORMER_PARAMS = argparse.Namespace(**__TRANSFORMER__)
