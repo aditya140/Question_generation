@@ -1,9 +1,7 @@
-
 import torch.nn as nn
 import torch
 from torch.nn import Parameter
 import heapq
-
 
 
 class Beam:
@@ -28,6 +26,7 @@ class Beam:
 
     def __getitem__(self, idx):
         return self.heap[idx]
+
 
 class Inference(nn.Module):
     def __init__(self, model, inpLang, optLang):
@@ -55,21 +54,21 @@ class Inference(nn.Module):
         return self.optLang.decode_batch(seq)
 
     def decode(self, seq, to_string=False):
-        return self.optLang.decode(seq,to_string=to_string)
+        return self.optLang.decode(seq, to_string=to_string)
 
 
 class GreedyDecoder(Inference):
     def __init__(self, model, inpLang, optLang):
         super(GreedyDecoder, self).__init__(model, inpLang, optLang)
 
-    def greedy_str(self, inp, max_len,to_string=False):
+    def greedy_str(self, inp, max_len, to_string=False):
         src = (torch.tensor(self.encode(inp)).unsqueeze(1).transpose(0, 1)).to(
             self.template_tensor.device
         )
         opt = self.model.greedy(
             src, self.decode_start, self.decode_stop, max_len=max_len
         )
-        opt = self.decode(opt,to_string=to_string)
+        opt = self.decode(opt, to_string=to_string)
         return opt
 
     def greedy_batch(self, inp, max_len):
@@ -80,7 +79,7 @@ class GreedyDecoder(Inference):
         opt = self.decode_batch(opt)
         return opt
 
-    def greedy(self, inp, max_len=10,to_string=False):
+    def greedy(self, inp, max_len=10, to_string=False):
         if isinstance(inp, str):
             return self.greedy_str(inp, max_len=max_len, to_string=to_string)
         if (
@@ -95,7 +94,7 @@ class BeamDecoder(Inference):
     def __init__(self, model, inpLang, optLang):
         super().__init__(model, inpLang, optLang)
 
-    def beam_str(self, inp, beam_width, max_len,to_string=False):
+    def beam_str(self, inp, beam_width, max_len, to_string=False):
         src = (torch.tensor(self.encode(inp)).unsqueeze(1).transpose(0, 1)).to(
             self.template_tensor.device
         )
@@ -106,10 +105,10 @@ class BeamDecoder(Inference):
             beam_width=beam_width,
             max_len=max_len,
         )
-        opt = [(i[0], self.decode(i[1],to_string=to_string)) for i in opt]
+        opt = [(i[0], self.decode(i[1], to_string=to_string)) for i in opt]
         return opt
 
-    def beam(self, inp, beam_width=3, max_len=10 ,to_string=False):
+    def beam(self, inp, beam_width=3, max_len=10, to_string=False):
         if isinstance(inp, str):
             return self.beam_str(inp, beam_width=beam_width, max_len=max_len)
         if (
@@ -118,5 +117,8 @@ class BeamDecoder(Inference):
             and all(isinstance(elem, str) for elem in inp)
         ):
             return [
-                self.beam_str(i, beam_width=beam_width, max_len=max_len, to_string=to_string) for i in inp
+                self.beam_str(
+                    i, beam_width=beam_width, max_len=max_len, to_string=to_string
+                )
+                for i in inp
             ]

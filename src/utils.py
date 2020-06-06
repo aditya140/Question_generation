@@ -11,6 +11,7 @@ import json
 import pandas as pd
 import shutil
 
+
 def epoch_time(start_time, end_time):
     elapsed_time = end_time - start_time
     elapsed_mins = int(elapsed_time / 60)
@@ -131,6 +132,7 @@ def get_max_version(name):
     versions = [int(i.split("/")[-2]) for i in glob.glob(path + "/*/")]
     return versions
 
+
 def save_model(path, name, params, model, **kwargs):
     if "version" not in kwargs.keys():
         version = 0
@@ -152,7 +154,8 @@ def save_model(path, name, params, model, **kwargs):
     with open(path + "hp.json", "w") as f:
         json.dump(params, f)
     if "test_df" in kwargs.keys():
-        kwargs['test_df'].to_csv(path + "test_df.csv")
+        kwargs["test_df"].to_csv(path + "test_df.csv")
+
 
 def load_model(name, version):
     path = f"./src/saved_models/{name}/{version}"
@@ -165,23 +168,27 @@ def load_model(name, version):
     state_dict = torch.load(path + f"/{name}.pt")
     return state_dict, inpLang, optLang, hp
 
-def load_test_df(name,version):
+
+def load_test_df(name, version):
     path = f"./src/saved_models/{name}/{version}"
-    df=pd.read_csv(path+'/test_df.csv',index_col=[0])
+    df = pd.read_csv(path + "/test_df.csv", index_col=[0])
     return df
 
-def save_test_df(df,name,version):
-    path = f"./src/saved_models/{name}/{version}"
-    df.to_csv(path+'/test_df_metrics.csv')
-    print(' DataFrame Saved')
 
-def save_metrics(metrics,name,version):
+def save_test_df(df, name, version):
     path = f"./src/saved_models/{name}/{version}"
-    with open(path+'/test_df_metrics.csv', 'w') as fp:
+    df.to_csv(path + "/test_df.csv")
+    print(" DataFrame Saved")
+
+
+def save_metrics(metrics, name, version):
+    path = f"./src/saved_models/{name}/{version}"
+    with open(path + "/test_df_metrics.csv", "w") as fp:
         json.dump(metrics, fp)
-    print('Metrics Saved')
+    print("Metrics Saved")
 
-def save_to_artifactory(name,version):
+
+def save_to_artifactory(name, version):
     pass
 
 
@@ -195,15 +202,16 @@ def copytree(src, dst, symlinks=False, ignore=None):
             shutil.copy2(s, d)
 
 
-def save_to_artifact(name,version):
+def save_to_artifact(name, version):
     path = f"./src/saved_models/{name}/{version}"
-    dest = f'/artifacts/{name}/{version}'
+    dest = f"/artifacts/{name}/{version}"
     if not os.path.exists(dest):
         os.makedirs(dest)
-    copytree(path,dest)
+    copytree(path, dest)
 
-def arg_copy(inp,opt):
-    if inp!=None:
+
+def arg_copy(inp, opt):
+    if inp != None:
         return inp
     else:
-        return opt 
+        return opt

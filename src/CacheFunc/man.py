@@ -3,16 +3,18 @@ import os
 import hashlib
 import pickle
 
-if not  os.path.exists("/temp/cache_registry/"):
+if not os.path.exists("/temp/cache_registry/"):
     os.makedirs("/temp/cache_registry/")
-    with open("/temp/cache_registry/registry.json",'w') as f:
+    with open("/temp/cache_registry/registry.json", "w") as f:
         f.write('{"a":"b"}')
 
 CACHE_PATH = "/temp/cache_registry"
 
 os.environ["PYTHONHASHSEED"] = "0"
 
-print("CWD: ",os.getcwd())
+print("CWD: ", os.getcwd())
+
+
 class Cache:
     def __init__(self):
         self.init_cache_reg()

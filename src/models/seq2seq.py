@@ -6,9 +6,9 @@ import numpy as np
 import heapq
 import torch.nn.functional as F
 import sys
+
 sys.path.append("./src/")
 from inference.inference_helpers import Beam
-
 
 
 class Encoder(nn.Module):
@@ -198,7 +198,7 @@ class Seq2seq(nn.Module):
             for score, seq, hid, cel in beam:
                 if not torch.eq(seq[-1:], stop_token):
                     out, new_hid, new_cel = self.decoder(seq[-1:], hid, cel)
-                    out = F.softmax(out,dim=1)
+                    out = F.softmax(out, dim=1)
                     out = out.topk(beam_width)
                     for i in range(beam_width):
                         new_score = score * out.values[0][i]

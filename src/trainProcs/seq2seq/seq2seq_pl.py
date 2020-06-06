@@ -1,8 +1,7 @@
 import sys
 import glob
+
 sys.path.append("./src/")
-
-
 
 
 from params import SEQ2SEQ_PARAMS
@@ -87,15 +86,14 @@ def train_model():
     trainer = pl.Trainer(max_epochs=hp.epochs, gpus=1, logger=logger, auto_lr_find=True)
     trainer.fit(model)
     to_save = {
-            "model": model.model,
-            "inpLang": model.data.inpLang,
-            "optLang": model.data.optLang,
-            "params": vars(hp),
-            "version": version,
-        }
+        "model": model.model,
+        "inpLang": model.data.inpLang,
+        "optLang": model.data.optLang,
+        "params": vars(hp),
+        "version": version,
+    }
     save_model(path=hp.save_path, name="seq2seq.pt", **to_save)
 
 
 if __name__ == "__main__":
     train_model()
-

@@ -8,4 +8,4 @@ import torch
 
 model = transformer(**vars(TRANSFORMER_PARAMS)).cuda()
 print(model)
-print(model(torch.randint(10,(1,100)).cuda(),torch.randint(10,(1,100)).cuda()))
+print(model(torch.randint(10, (1, 100)).cuda(), torch.randint(10, (1, 100)).cuda()))
