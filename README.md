@@ -1,2 +1,2 @@
 # Question_generation
-Implementation of various models including transformers for Question Generation Task
+Exploration framework for Neural / Transformer based Question Generation Architectures
