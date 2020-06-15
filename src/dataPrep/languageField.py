@@ -174,6 +174,8 @@ class LanguageIndex:
             sent = sent[1:-1]
         if self.tokenizer == "BERT" and to_string:
             return self.bert_tokenizer.convert_tokens_to_string(sent)
+        if to_string:
+            return " ".join(sent)
         return sent
 
     def vocab_size_final(self):

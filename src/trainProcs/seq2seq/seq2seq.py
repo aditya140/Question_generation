@@ -180,9 +180,11 @@ if __name__ == "__main__":
     parser.add_argument("--tokenizer", type=str)
     parser.add_argument("--NMT", action="store_true", help="Neural Machine Translation")
     parser.add_argument("--QGEN", action="store_true", help="Question Generation")
+    parser.add_argument("--sample",action="store_true",help="Sample")
     parser.add_argument(
         "--to_artifact", action="store_true", help="Save to artifacts folder"
     )
+
 
     args = parser.parse_args()
     hp = SEQ2SEQ_PARAMS
@@ -194,6 +196,7 @@ if __name__ == "__main__":
     hp.hidden_size = arg_copy(args.hidden_dim, hp.hidden_size)
     hp.tokenizer = arg_copy(args.tokenizer, hp.tokenizer)
     hp.to_artifact = arg_copy(args.to_artifact, hp.to_artifact)
+    hp.sample = arg_copy(args.sample, hp.sample)
     if args.QGEN:
         hp.squad = True
     if args.NMT:
