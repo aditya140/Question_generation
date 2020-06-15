@@ -186,6 +186,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--to_artifact", action="store_true", help="Save to artifacts folder"
     )
+    parser.add_argument("--sample", action="store_true", help="Sample")
 
     args = parser.parse_args()
     hp = TRANSFORMER_PARAMS
@@ -199,6 +200,7 @@ if __name__ == "__main__":
     hp.hidden_dim = arg_copy(args.hidden_dim, hp.hidden_dim)
     hp.tokenizer = arg_copy(args.tokenizer, hp.tokenizer)
     hp.to_artifact = arg_copy(args.to_artifact, hp.to_artifact)
+    hp.sample = arg_copy(args.sample, hp.sample)
     if args.QGEN:
         hp.squad = True
     if args.NMT:
