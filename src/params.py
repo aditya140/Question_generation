@@ -10,7 +10,7 @@ __SEQ2SEQ__ = {
     "rnn_units": 2,
     "hidden_size": 128,
     "batch_size": 64,
-    "squad": False,
+    "squad": True,
     "tokenizer": "spacy",
     "max_len": 40,
     "sample": False,
