@@ -12,15 +12,14 @@ import argparse
 import unicodedata
 import re
 from tqdm import tqdm
-from .bleu import get_bleu
+# from .bleu import get_bleu
+from .pycocoevalcap.bleu import bleu
+from .pycocoevalcap.meteor import meteor
+from .pycocoevalcap.cider import cider
+from .pycocoevalcap.rouge import rouge
 
 tqdm.pandas()
 
-
-def bleu_metric(ref, candidate, wt=1):
-    weight = [1 / wt] * (wt) + [0] * (4 - wt)
-    score = get_bleu(candidate.split(" "), ref.split(" "))
-    return score
 
 
 def unicode_to_ascii(s):
@@ -98,10 +97,32 @@ class Model_tester:
         df["pred"] = df["pred"].apply(lambda x: preprocess_sentence(x))
         print(df["pred"].head())
         df["output"] = df["output"].apply(lambda x: preprocess_sentence(x))
-        df["bleu"] = df.apply(
-            lambda x: bleu_metric(x["output"], x["pred"], wt=1), axis=1
-        )
-        metrics = {"bleu": df.mean()["bleu"]}
+        
+        def to_list(x):
+            return [x]
+        df["output"]=df["output"].apply(to_list)
+        df["pred"]=df["pred"].apply(to_list)
+
+        x=df.to_dict()
+        
+        gts=x["output"]
+        res=x["pred"]
+        
+        bleu_scorer=bleu.Bleu()
+        meteor_scorer=meteor.Meteor()
+        cider_scorer=cider.Cider()
+        rouge_scorer=rouge.Rouge()
+        
+        bleu_score=bleu_scorer.compute_score(gts,res)
+        meteor_score=meteor_scorer.compute_score(gts,res)
+        cider_score=cider_scorer.compute_score(gts,res)
+        rouge_score=rouge_scorer.compute_score(gts,res)
+        
+        s=f"Bleu1 : {bleu_score[0][0]} \nBleu2 : {bleu_score[0][1]} \nBleu3 : {bleu_score[0][2]} \nBleu4 : {bleu_score[0][3]} \n"
+        s+=f"Meteor : {meteor_score[0]}\n"
+        s+=f"Cider : {cider_score[0]}\n"
+        s+=f"ROUGE : {rouge_score[0]}\n"
+        metrics = s
         return df, metrics
 
 
