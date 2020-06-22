@@ -45,10 +45,15 @@ def main(hp):
     test_dataloader = data.get_test_dataloader()
 
     """
+    Embedding weight matrix if needed
+    """
+    inp_emb, opt_emb = data.get_weight_matrix()
+    """
     Create model
     """
     model = Seq2seq(**vars(hp))
     model.init_weights()
+    model.create_embeddings(inp_emb,opt_emb)
     print(f"The model has {count_parameters(model):,} trainable parameters")
     print(model)
     model.to(device)
@@ -180,11 +185,10 @@ if __name__ == "__main__":
     parser.add_argument("--tokenizer", type=str)
     parser.add_argument("--NMT", action="store_true", help="Neural Machine Translation")
     parser.add_argument("--QGEN", action="store_true", help="Question Generation")
-    parser.add_argument("--sample",action="store_true",help="Sample")
+    parser.add_argument("--sample", action="store_true", help="Sample")
     parser.add_argument(
         "--to_artifact", action="store_true", help="Save to artifacts folder"
     )
-
 
     args = parser.parse_args()
     hp = SEQ2SEQ_PARAMS

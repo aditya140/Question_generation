@@ -12,13 +12,19 @@ from inference.inference_helpers import Beam
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_dim, emb_dim, hidden_size, rnn_units, dropout):
+    def __init__(
+        self, input_dim, emb_dim, hidden_size, rnn_units, dropout, embedding=None
+    ):
         super(Encoder, self).__init__()
         self.hidden_size = hidden_size
         self.rnn_units = rnn_units
         self.embedding = nn.Embedding(input_dim, emb_dim)
         self.rnn = nn.LSTM(emb_dim, hidden_size, rnn_units, dropout=dropout)
         self.dropout = nn.Dropout(dropout)
+
+    def create_embedding(self, weight_matrix):
+        emb = torch.from_numpy(weight_matrix).type(torch.FloatTensor)
+        self.embedding = self.embedding.from_pretrained(emb)
 
     def forward(self, src):
         src = src.transpose(0, 1)
@@ -39,6 +45,10 @@ class Decoder(nn.Module):
         self.rnn = nn.LSTM(emb_dim, hidden_size, rnn_units, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_dim)
         self.dropout = nn.Dropout(dropout)
+
+    def create_embedding(self, weight_matrix):
+        emb = torch.from_numpy(weight_matrix).type(torch.FloatTensor)
+        self.embedding = self.embedding.from_pretrained(emb)
 
     def forward(self, input, hidden, cell):
         input = input.unsqueeze(0)
@@ -82,6 +92,18 @@ class Seq2seq(nn.Module):
             output_vocab, dec_emb_dim, hidden_size, rnn_units, dec_dropout,
         )
         self.template_zeros = Parameter(torch.zeros(1), requires_grad=True)
+
+    def create_embeddings(self, input_emb, output_emb):
+        """[summary]
+
+        Add pretrained embeddings - Glove, Word2vec
+        
+        Arguments:
+            input_emb {[type]} -- Input Embedding weight Matrix
+            output_emb {[type]} -- Output Embedding weight Matrix
+        """
+        self.encoder.create_embedding(input_emb)
+        self.decoder.create_embedding(output_emb)
 
     def forward(self, src, trg):
         """[summary]

@@ -32,8 +32,11 @@ def pad_sequences(x, max_len):
     return padded
 
 
-def get_torch_device():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def get_torch_device(gpu=True):
+    if gpu:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device("cpu")
     return device
 
 
