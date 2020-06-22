@@ -23,6 +23,8 @@ __SEQ2SEQ__ = {
     "enc_dropout": 0.3,
     "dec_dropout": 0.3,
     "epochs": 8,
+    "optim":"SGD",
+    "scheduler":True,
     "trial_path": "./src/experiment/seq2seq/",
     "to_artifact": False,
     "prune": True,

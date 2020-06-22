@@ -45,9 +45,6 @@ def main(hp):
     test_dataloader = data.get_test_dataloader()
 
     """
-    Embedding weight matrix if needed
-    """
-    """
     Create model
     """
     model = Seq2seq(**vars(hp))
@@ -63,7 +60,26 @@ def main(hp):
     Loss Function and optimizers
     """
     CCE = lambda x, y: F.cross_entropy(x, y, ignore_index=0)
-    adamW = optim.AdamW(model.parameters(), lr=hp.lr)
+    if hp.optim == "adam":
+        optimizer = optim.AdamW(model.parameters(), lr=hp.lr)
+    if hp.optim == "SGD":
+        optimizer = optim.SGD(model.parameters(), lr=hp.lr)
+
+    """
+    Scheduler
+    """
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=0.1,
+        patience=5,
+        verbose=False,
+        threshold=0.0001,
+        threshold_mode="rel",
+        cooldown=0,
+        min_lr=0,
+        eps=1e-08,
+    )
 
     """
     Train Function
@@ -137,8 +153,9 @@ def main(hp):
         print("-" * 10)
         print(f"Epoch : {ep}")
         st_time = time.time()
-        train_loss = train(model, train_dataloader, adamW, CCE, device)
+        train_loss = train(model, train_dataloader, optimizer, CCE, device)
         val_loss = evaluate(model, val_dataloader, CCE, device)
+        scheduler.step()
         if val_loss < best_model_loss:
             to_save = {
                 "model": model,
@@ -184,6 +201,8 @@ if __name__ == "__main__":
     parser.add_argument("--hidden_dim", type=int)
     parser.add_argument("--dropout", type=float)
     parser.add_argument("--tokenizer", type=str)
+    parser.add_argument("--optim", type=str)
+    parser.add_argument("--scheduler", action="store_true", help="Use Scheduler")
     parser.add_argument("--NMT", action="store_true", help="Neural Machine Translation")
     parser.add_argument("--QGEN", action="store_true", help="Question Generation")
     parser.add_argument("--pretrained", action="store_true", help="Question Generation")
@@ -204,6 +223,8 @@ if __name__ == "__main__":
     hp.to_artifact = arg_copy(args.to_artifact, hp.to_artifact)
     hp.pretrained = arg_copy(args.pretrained, hp.pretrained)
     hp.sample = arg_copy(args.sample, hp.sample)
+    hp.optim = arg_copy(args.optim, hp.optim)
+    hp.scheduler = arg_copy(args.scheduler, hp.scheduler)
     if args.QGEN:
         hp.squad = True
     if args.NMT:
