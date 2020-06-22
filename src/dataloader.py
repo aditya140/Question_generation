@@ -1,6 +1,6 @@
 from dataPrep.dataset import QGenDataset
 from torch.utils.data import DataLoader
-from dataPrep.glove_embedding import read_embedding_file
+from dataPrep.glove_embedding import read_embedding_file,download
 
 
 class SimpleDataloader:
@@ -65,6 +65,7 @@ class SimpleDataloader:
         return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=10)
 
     def get_weight_matrix(self):
+        download()
         if self.kwargs["pretrained"]:
             return (
                 read_embedding_file(self.inpLang, self.kwargs["embedding_dim"]),

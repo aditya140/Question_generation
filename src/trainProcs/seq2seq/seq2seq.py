@@ -47,13 +47,14 @@ def main(hp):
     """
     Embedding weight matrix if needed
     """
-    inp_emb, opt_emb = data.get_weight_matrix()
     """
     Create model
     """
     model = Seq2seq(**vars(hp))
     model.init_weights()
-    model.create_embeddings(inp_emb, opt_emb)
+    if hp.pretrained:
+        inp_emb, opt_emb = data.get_weight_matrix()
+        model.create_embeddings(inp_emb, opt_emb)
     print(f"The model has {count_parameters(model):,} trainable parameters")
     print(model)
     model.to(device)

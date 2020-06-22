@@ -10,15 +10,17 @@ import numpy as np
 
 sys.path.append("./src/")
 
-if not os.path.exists(os.path.join(PATH, "glove")):
-    os.makedirs(os.path.join(PATH, "glove"))
-    wget.download(
-        "http://nlp.stanford.edu/data/glove.6B.zip", out=os.path.join(PATH, "glove")
-    )
-    with zipfile.ZipFile(
-        os.path.join(os.path.join(PATH, "glove"), "glove.6B.zip"), "r"
-    ) as zip_ref:
-        zip_ref.extractall(os.path.join(PATH, "glove"))
+
+def download():
+    if not os.path.exists(os.path.join(PATH, "glove")):
+        os.makedirs(os.path.join(PATH, "glove"))
+        wget.download(
+            "http://nlp.stanford.edu/data/glove.6B.zip", out=os.path.join(PATH, "glove")
+        )
+        with zipfile.ZipFile(
+            os.path.join(os.path.join(PATH, "glove"), "glove.6B.zip"), "r"
+        ) as zip_ref:
+            zip_ref.extractall(os.path.join(PATH, "glove"))
 
 
 def read_embedding_file(vocab, dim):
