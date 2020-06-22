@@ -155,7 +155,7 @@ def main(hp):
         st_time = time.time()
         train_loss = train(model, train_dataloader, optimizer, CCE, device)
         val_loss = evaluate(model, val_dataloader, CCE, device)
-        scheduler.step()
+        scheduler.step(val_loss)
         if val_loss < best_model_loss:
             to_save = {
                 "model": model,
