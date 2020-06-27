@@ -13,7 +13,7 @@ workflows:
         triggers:
           branches:
             only:
-              - train.*
+              - master
           tags:
             only:
               - train.*
