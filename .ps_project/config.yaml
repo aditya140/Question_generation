@@ -8,7 +8,7 @@ workflows:
         command: experiment.run_single_node
         params:
           command: bash run.sh
-          container: aditya1e0/pytorch_nlp:1
+          container: aditya1e0/pytorch_nlp:2
           machineType: "K80"
         triggers:
           branches:
