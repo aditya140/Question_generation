@@ -9,7 +9,7 @@ workflows:
         params:
           command: bash run.sh
           container: aditya1e0/pytorch_nlp:2
-          machineType: "G1"
+          machineType: "K80"
         triggers:
           branches:
             only:
