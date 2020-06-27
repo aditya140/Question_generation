@@ -4,7 +4,7 @@ workflows:
   single-node:
     steps:
       -
-        name: "train_seq2seq"
+        name: "test-run"
         command: experiment.run_single_node
         params:
           command: bash run.sh
