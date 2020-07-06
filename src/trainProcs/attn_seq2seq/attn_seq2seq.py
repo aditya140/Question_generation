@@ -1,6 +1,3 @@
-%load_ext autoreload
-%autoreload 2
-
 import sys
 
 sys.path.append("./src/")
@@ -200,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", action="store_true", help="Use GPU")
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--lr", type=float)
-    parser.add_argument("--layers", type=int)s
+    parser.add_argument("--layers", type=int)
     parser.add_argument("--inp_vocab", type=int)
     parser.add_argument("--out_vocab", type=int)
     parser.add_argument("--emb_dim", type=int)
