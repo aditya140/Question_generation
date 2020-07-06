@@ -49,7 +49,7 @@ class Attention(nn.Module):
 
     def forward(self,encoder_hidden, hidden):
         score = self.score(encoder_hidden,hidden)
-        return F.softmax(score)
+        return F.softmax(score,dim=1)
 
     def score(self,encoder_hidden,hidden):
         hs = encoder_hidden.permute(1,0,2)
@@ -124,6 +124,18 @@ class AttnSeq2seq(nn.Module):
         )
         self.template_zeros = Parameter(torch.zeros(1), requires_grad=True)
 
+    def create_embeddings(self, input_emb, output_emb):
+        """[summary]
+
+        Add pretrained embeddings - Glove, Word2vec
+        
+        Arguments:
+            input_emb {[type]} -- Input Embedding weight Matrix
+            output_emb {[type]} -- Output Embedding weight Matrix
+        """
+        self.encoder.create_embedding(input_emb)
+        self.decoder.create_embedding(output_emb)
+
 
     def forward(self, src, trg):
         """[summary]
@@ -151,6 +163,110 @@ class AttnSeq2seq(nn.Module):
             top1 = output.argmax(1)
             input = trg[:, t] if teacher_force else top1
         return outputs
+    
+    def greedy(self, src, start_token, stop_token, max_len=10):
+        """[summary]
+
+        Arguments:
+            src {[type]} -- [description]
+            start_token {[type]} -- [description]
+            stop_token {[type]} -- [description]
+
+        Keyword Arguments:
+            max_len {int} -- [description] (default: {10})
+
+        Returns:
+            [type] -- [description]
+        """
+        batch_size = src.shape[1]
+        encoder_outputs,hidden, cell = self.encoder(src)
+        input = torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
+        stop = False
+        outputs = []
+        while not stop:
+            output, hidden, cell = self.decoder(input, hidden, cell, encoder_outputs)
+            top1 = output.argmax(1)
+            input = top1
+            if top1.item() == stop_token or len(outputs) > max_len:
+                stop = True
+            outputs.append(top1.item())
+        return outputs
+
+    def greedy_batch(self, src, start_token, stop_token, max_len=10):
+        """[summary]
+
+        Arguments:
+            src {[type]} -- [description]
+            start_token {[type]} -- [description]
+            stop_token {[type]} -- [description]
+
+        Keyword Arguments:
+            max_len {int} -- [description] (default: {10})
+
+        Returns:
+            [type] -- [description]
+        """
+        batch_size = src.shape[0]
+        encoder_outputs, hidden, cell = self.encoder(src)
+        input = torch.tensor(
+            [start_token] * batch_size, device=self.template_zeros.device
+        )
+        stop = False
+        outputs = []
+        while not stop:
+            output, hidden, cell = self.decoder(input, hidden, cell, encoder_outputs)
+            top1 = output.argmax(1)
+            topk = torch.topk(output, 5)
+            input = top1
+            if len(outputs) > max_len:
+                stop = True
+            outputs.append(top1.cpu().tolist())
+        outputs = np.array(outputs).transpose().tolist()
+        return outputs
+
+    def beam(self, src, start_token, stop_token, beam_width=3, max_len=10):
+        """[summary]
+
+        Arguments:
+            inp {[type]} -- [description]
+            start_token {[type]} -- [description]
+            stop_token {[type]} -- [description]
+
+        Keyword Arguments:
+            beam_width {int} -- [description] (default: {3})
+            max_len {int} -- [description] (default: {10})
+        """
+        beam = Beam(beam_width)
+        batch_size = src.shape[1]
+        trg_vocab_size = self.decoder.output_dim
+        encoder_outputs, hidden, cell = self.encoder(src)
+        start_token = (
+            torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
+        )
+        stop_token = (
+            torch.tensor(stop_token).unsqueeze(0).to(self.template_zeros.device)
+        )
+        beam.add(score=1.0, sequence=start_token, hidden=hidden, cell=cell)
+        for _ in range(max_len):
+            new_beam = Beam(beam_width)
+            for score, seq, hid, cel in beam:
+                if not torch.eq(seq[-1:], stop_token):
+                    out, new_hid, new_cel = self.decoder(seq[-1:], hid, cel , encoder_outputs)
+                    out = F.softmax(out, dim=1)
+                    out = out.topk(beam_width)
+                    for i in range(beam_width):
+                        new_score = score * out.values[0][i]
+                        new_beam.add(
+                            score=new_score,
+                            sequence=torch.cat([seq, out.indices[0][i].unsqueeze(0)]),
+                            hidden=new_hid,
+                            cell=new_cel,
+                        )
+                else:
+                    new_beam.add(score=score, sequence=seq, hidden=hid, cell=cel)
+            beam = new_beam
+        opt = [(i.tolist(), seq.tolist()) for i, seq, _, _ in beam]
+        return opt
 
 
     def init_weights(self):

@@ -5,6 +5,7 @@ sys.path.append("./src/")
 import streamlit as st
 from models.seq2seq import Seq2seq
 from models.transformer import transformer
+from models.attn_seq2seq import AttnSeq2seq
 from utils import load_model, epoch_time, get_max_version, get_torch_device
 from inference.inference_helpers import GreedyDecoder, BeamDecoder
 import torch
@@ -19,13 +20,15 @@ def load_st_model(name, version):
         src_pad_idx = inpLang.word2idx[inpLang.special["pad_token"]]
         trg_pad_idx = optLang.word2idx[optLang.special["pad_token"]]
         model = transformer(src_pad_idx=src_pad_idx, trg_pad_idx=trg_pad_idx, **hp)
+    elif name == "attn_seq2seq":
+        model = AttnSeq2seq(**hp)
     model.load_state_dict(state_dict)
     return model, inpLang, optLang, hp
 
 
 st.sidebar.title("Question Generation Models")
 
-model_name = st.sidebar.selectbox("Model", ["seq2seq", "transformer"])
+model_name = st.sidebar.selectbox("Model", ["seq2seq", "transformer","attn_seq2seq"])
 version = get_max_version(model_name)
 version_selected = st.sidebar.slider(
     "Select version", min_value=min(version), max_value=max(version)

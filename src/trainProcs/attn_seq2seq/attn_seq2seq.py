@@ -27,6 +27,8 @@ import time
 import glob
 import argparse
 import pandas as pd
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 
@@ -229,7 +231,7 @@ if __name__ == "__main__":
     hp.sample = arg_copy(args.sample, hp.sample)
     hp.optim = arg_copy(args.optim, hp.optim)
     hp.scheduler = arg_copy(args.scheduler, hp.scheduler)
-    hp.attention_type = arg_copy(arg.attention_type,hp.attention_type)
+    hp.attention_type = arg_copy(args.attention_type,hp.attention_type)
     if args.QGEN:
         hp.squad = True
     if args.NMT:
