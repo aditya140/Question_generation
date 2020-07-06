@@ -71,6 +71,7 @@ __ATTN_SEQ2SEQ__ = {
     "output_vocab": 45000,
     "embedding_dim": 300,
     "pretrained": False,
+    "attention_type":"dot",
     "rnn_units": 2,
     "bidir":True,
     "hidden_size": 600,
@@ -87,8 +88,8 @@ __ATTN_SEQ2SEQ__ = {
     "enc_dropout": 0.3,
     "dec_dropout": 0.3,
     "epochs": 8,
-    "optim":"SGD",
-    "scheduler":True,
+    "optim":"adam",
+    "scheduler":False,
     "to_artifact": False,
 }
 ATTN_SEQ2SEQ_PARAMS = argparse.Namespace(**__ATTN_SEQ2SEQ__)
