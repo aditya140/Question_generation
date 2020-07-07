@@ -78,9 +78,11 @@ st.markdown("# Output")
 if dec_type == "Greedy":
     sent , att_map = decoder.greedy(txt, max_len=max_length)
     inp_str,opt_str,attention_mask = att_map
-    plot_heatmap(inp_str,opt_str,attention_mask.squeeze(1))
+    if attention_mask:
+        plot_heatmap(inp_str,opt_str,attention_mask.squeeze(1))
     st.markdown(" ".join(sent))
-    st.pyplot()
+    if attention_mask:
+        st.pyplot()
 elif dec_type == "Beam":
     outputs = decoder.beam(txt, max_len=max_length, beam_width=beam_size)
     for idx, i in enumerate(outputs):
