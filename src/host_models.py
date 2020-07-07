@@ -10,6 +10,10 @@ from utils import load_model, epoch_time, get_max_version, get_torch_device
 from inference.inference_helpers import GreedyDecoder, BeamDecoder
 import torch
 import time
+import numpy as np
+import seaborn as sns
+import matplotlib.pylab as plt
+
 
 
 def load_st_model(name, version):
@@ -24,6 +28,16 @@ def load_st_model(name, version):
         model = AttnSeq2seq(**hp)
     model.load_state_dict(state_dict)
     return model, inpLang, optLang, hp
+
+
+def plot_heatmap(inp,opt,mask):
+    mask = mask.detach().cpu()
+    mask = mask[:,1:len(inp)+1]
+    uniform_data = np.random.rand(10, 12)
+    ax = sns.heatmap(mask, linewidth=0.5,xticklabels=inp,yticklabels=opt,cmap="Blues")
+    ax.invert_yaxis()
+    return ax
+
 
 
 st.sidebar.title("Question Generation Models")
@@ -59,7 +73,11 @@ txt = st.text_area("Context", "john used to live in canada")
 st.markdown("# Output")
 
 if dec_type == "Greedy":
-    st.markdown(" ".join(decoder.greedy(txt, max_len=max_length)))
+    sent , att_map = decoder.greedy(txt, max_len=max_length)
+    inp_str,opt_str,attention_mask = att_map
+    plot_heatmap(inp_str,opt_str,attention_mask.squeeze(1))
+    st.markdown(" ".join(sent))
+    st.pyplot()
 elif dec_type == "Beam":
     outputs = decoder.beam(txt, max_len=max_length, beam_width=beam_size)
     for idx, i in enumerate(outputs):

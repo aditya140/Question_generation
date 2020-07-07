@@ -15,7 +15,7 @@ inference = GreedyDecoder(model=model, inpLang=inpLang, optLang=optLang)
 
 inference.to(torch.device("cuda"))
 
-print(inference.greedy("my name is john"))
+print(inference.greedy("my name is john")[0])
 
 
 state_dict, inpLang, optLang, hp = load_model(name="seq2seq", version=3)

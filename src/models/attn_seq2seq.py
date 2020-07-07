@@ -81,7 +81,7 @@ class Decoder(nn.Module):
         attention_context = attention_weights.unsqueeze(1).bmm(encoder_hidden.permute(1,0,2)).squeeze(1)
         decoder_output = torch.cat((attention_context,output.squeeze(0)),dim=1)
         prediction = self.fc(decoder_output)
-        return prediction, hidden, cell
+        return prediction, hidden, cell, attention_weights
 
 
 
@@ -156,13 +156,16 @@ class AttnSeq2seq(nn.Module):
         outputs = self.template_zeros.repeat(trg_len, batch_size, trg_vocab_size)
         encoder_outputs , hidden , cell = self.encoder(src)
         input = trg[:, 0]
+        attention_map=[]
         for t in range(1, trg_len):
-            output, hidden, cell = self.decoder(input, hidden, cell, encoder_outputs)
+            output, hidden, cell, score = self.decoder(input, hidden, cell, encoder_outputs)
+            attention_map.append(score)
             outputs[t] = output
             teacher_force = torch.rand(1).item() < torch.tensor(0.8)
             top1 = output.argmax(1)
             input = trg[:, t] if teacher_force else top1
-        return outputs
+        attention_map=torch.stack(attention_map)
+        return outputs 
     
     def greedy(self, src, start_token, stop_token, max_len=10):
         """[summary]
@@ -183,14 +186,17 @@ class AttnSeq2seq(nn.Module):
         input = torch.tensor(start_token).unsqueeze(0).to(self.template_zeros.device)
         stop = False
         outputs = []
+        attention_map=[]
         while not stop:
-            output, hidden, cell = self.decoder(input, hidden, cell, encoder_outputs)
+            output, hidden, cell, score = self.decoder(input, hidden, cell, encoder_outputs)
+            attention_map.append(score)
             top1 = output.argmax(1)
             input = top1
             if top1.item() == stop_token or len(outputs) > max_len:
                 stop = True
             outputs.append(top1.item())
-        return outputs
+        attention_map=torch.stack(attention_map)
+        return outputs , attention_map
 
     def greedy_batch(self, src, start_token, stop_token, max_len=10):
         """[summary]

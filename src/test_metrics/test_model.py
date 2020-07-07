@@ -79,7 +79,7 @@ class Model_tester:
             self.decoder.to(get_torch_device())
             self.generate = lambda x: self.decoder.greedy(
                 x, max_len=self.max_len, to_string=True
-            )
+            )[0]
         if self.mode == "beam" and beam_size != None:
             self.decoder = BeamDecoder(model=model, inpLang=inpLang, optLang=optLang)
             self.decoder.to(get_torch_device())

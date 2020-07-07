@@ -37,6 +37,14 @@ class Inference(nn.Module):
         self.decode_start = self.optLang.word2idx[self.optLang.special["init_token"]]
         self.decode_stop = self.optLang.word2idx[self.optLang.special["eos_token"]]
         self.template_tensor = Parameter(torch.tensor(0), requires_grad=False)
+        self.model.eval()
+
+    def tokenize(self,text,str_type="inp"):
+        if str_type == "inp":
+            return self.inpLang.tokenize(text)
+        if str_type == "opt":
+            return self.optLang.tokenize(text)
+
 
     def encode(self, inp):
         assert isinstance(inp, str)
@@ -65,11 +73,13 @@ class GreedyDecoder(Inference):
         src = (torch.tensor(self.encode(inp)).unsqueeze(1).transpose(0, 1)).to(
             self.template_tensor.device
         )
-        opt = self.model.greedy(
+        opt, attention_map = self.model.greedy(
             src, self.decode_start, self.decode_stop, max_len=max_len
         )
         opt = self.decode(opt, to_string=to_string)
-        return opt
+        opt_eos_strip=opt[:-1] if opt[-1]=="<EOS>" else opt
+        attention_mask = [self.tokenize(inp,str_type='inp'),self.tokenize(" ".join(opt_eos_strip),str_type='opt'),attention_map]
+        return opt, attention_mask
 
     def greedy_batch(self, inp, max_len):
         src = (torch.tensor(self.encode_batch(inp))).to(self.template_tensor.device)
