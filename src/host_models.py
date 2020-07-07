@@ -13,7 +13,7 @@ import time
 import numpy as np
 import seaborn as sns
 import matplotlib.pylab as plt
-
+from scipy.special import softmax
 
 
 def load_st_model(name, version):
@@ -32,10 +32,13 @@ def load_st_model(name, version):
 
 def plot_heatmap(inp,opt,mask):
     mask = mask.detach().cpu()
-    mask = mask[:,1:len(inp)+1]
-    uniform_data = np.random.rand(10, 12)
-    ax = sns.heatmap(mask, linewidth=0.5,xticklabels=inp,yticklabels=opt,cmap="Blues")
-    ax.invert_yaxis()
+    mask = mask[:,:len(inp)+1].numpy().transpose(1,0)
+    # mask = mask / mask.max(axis=0)
+    mask=softmax(mask)
+    ax = sns.heatmap(mask, linewidth=0.5,xticklabels=opt,yticklabels=["<SOS>"] + inp,cmap="Blues")
+    ax.xaxis.tick_top() # x axis on top
+    ax.xaxis.set_label_position('top')
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
     return ax
 
 

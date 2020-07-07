@@ -29,6 +29,9 @@ class Beam:
 
 
 class Inference(nn.Module):
+    """[summary]
+    Inference Base class lo store model and language indices, basic decode functions are implemented
+    """
     def __init__(self, model, inpLang, optLang):
         super().__init__()
         self.model = model
@@ -40,6 +43,10 @@ class Inference(nn.Module):
         self.model.eval()
 
     def tokenize(self,text,str_type="inp"):
+        """[summary]
+
+        Toke
+        """
         if str_type == "inp":
             return self.inpLang.tokenize(text)
         if str_type == "opt":

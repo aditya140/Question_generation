@@ -257,7 +257,7 @@ class AttnSeq2seq(nn.Module):
             new_beam = Beam(beam_width)
             for score, seq, hid, cel in beam:
                 if not torch.eq(seq[-1:], stop_token):
-                    out, new_hid, new_cel = self.decoder(seq[-1:], hid, cel , encoder_outputs)
+                    out, new_hid, new_cel, att_map = self.decoder(seq[-1:], hid, cel , encoder_outputs)
                     out = F.softmax(out, dim=1)
                     out = out.topk(beam_width)
                     for i in range(beam_width):
