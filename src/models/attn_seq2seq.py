@@ -44,32 +44,41 @@ class Encoder(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self,):
+    def __init__(self,attention_type,hidden_size):
         super(Attention,self).__init__()
+        self.attention_type=attention_type
+        if self.attention_type=="general":
+            self.Wa=nn.Linear(hidden_size,hidden_size,bias=False)
 
     def forward(self,encoder_hidden, hidden):
         score = self.score(encoder_hidden,hidden)
         return F.softmax(score,dim=1)
 
     def score(self,encoder_hidden,hidden):
-        hs = encoder_hidden.permute(1,0,2)
-        ht = hidden.unsqueeze(-1)
-        score = hs.bmm(ht).squeeze(-1)
-        return score
+        if self.attention_type == "dot":
+            hs = encoder_hidden.permute(1,0,2)
+            ht = hidden.unsqueeze(-1)
+            score = hs.bmm(ht).squeeze(-1)
+            return score
+        elif self.attention_type == 'general':
+            hs = encoder_hidden.permute(1,0,2)
+            ht = self.Wa(hidden)
+            ht = hidden.unsqueeze(-1)
+            return hs.bmm(ht).squeeze(-1)
 
 
 class Decoder(nn.Module):
     def __init__(
-        self, output_dim, emb_dim, hidden_size, rnn_units, dropout,bidir
+        self, output_dim, emb_dim, hidden_size, rnn_units, dropout,bidir,attention_type
     ):
         super(Decoder, self).__init__()
         self.output_dim = output_dim
-        self.hidden_size = hidden_size
+        self.hidden_size = hidden_size * (2 if bidir else 1)
         self.rnn_units = rnn_units
         self.embedding = nn.Embedding(output_dim, emb_dim)
-        self.rnn = nn.LSTM(emb_dim, hidden_size * (2 if bidir else 1), rnn_units, dropout=dropout)
-        self.attention = Attention()
-        self.fc = nn.Linear(hidden_size * (2 if bidir else 1) * 2, output_dim)
+        self.rnn = nn.LSTM(emb_dim, self.hidden_size, rnn_units, dropout=dropout)
+        self.attention = Attention(attention_type, self.hidden_size)
+        self.fc = nn.Linear(self.hidden_size * 2, output_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input, hidden, cell, encoder_hidden):
@@ -81,6 +90,7 @@ class Decoder(nn.Module):
         attention_context = attention_weights.unsqueeze(1).bmm(encoder_hidden.permute(1,0,2)).squeeze(1)
         decoder_output = torch.cat((attention_context,output.squeeze(0)),dim=1)
         prediction = self.fc(decoder_output)
+        prediction = F.log_softmax(prediction,-1)
         return prediction, hidden, cell, attention_weights
 
 
@@ -99,6 +109,7 @@ class AttnSeq2seq(nn.Module):
         enc_dropout,
         dec_dropout,
         bidir,
+        attention_type='dot',
         **kwargs
     ):
         """[summary]
@@ -120,7 +131,7 @@ class AttnSeq2seq(nn.Module):
             input_vocab, enc_emb_dim, hidden_size, rnn_units, enc_dropout,bidir=bidir,
         )
         self.decoder = Decoder(
-            output_vocab, dec_emb_dim, hidden_size, rnn_units, dec_dropout,bidir=bidir,
+            output_vocab, dec_emb_dim, hidden_size, rnn_units, dec_dropout,bidir=bidir,attention_type=attention_type
         )
         self.template_zeros = Parameter(torch.zeros(1), requires_grad=True)
 

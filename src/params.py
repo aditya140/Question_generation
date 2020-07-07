@@ -66,13 +66,13 @@ TRANSFORMER_PARAMS = argparse.Namespace(**__TRANSFORMER__)
 
 __ATTN_SEQ2SEQ__ = {
     "save_path": "./src/saved_models/attn_seq2seq",
-    "lr": 1e-3,
+    "lr": 5e-3,
     "input_vocab": 45000,
     "output_vocab": 45000,
     "embedding_dim": 300,
     "pretrained": False,
     "attention_type":"dot",
-    "rnn_units": 2,
+    "rnn_units": 1,
     "bidir":True,
     "hidden_size": 600,
     "batch_size": 64,
