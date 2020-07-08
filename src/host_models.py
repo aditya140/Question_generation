@@ -44,20 +44,7 @@ def plot_heatmap(inp,opt,mask):
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     return ax
 
-
-
-st.sidebar.title("Question Generation Models")
-
-model_name = st.sidebar.selectbox("Model", ["seq2seq", "transformer","attn_seq2seq"])
-version = get_max_version(model_name)
-if len(version)==0:
-    version_selected=-2
-else:
-    version_selected = st.sidebar.slider(
-            "Select version", min_value=min(version)-1, max_value=max(version)
-        )
-if len(version)>0 and version_selected!=-1:
-    model, inpLang, optLang, hp, test_df = load_st_model(model_name, version_selected)
+def run_model(model, inpLang, optLang, hp, test_df):
     if hp["squad"] == False:
         st.markdown("## Translation Model")
     else:
@@ -66,7 +53,6 @@ if len(version)>0 and version_selected!=-1:
 
     dec_type = st.radio("Decoding Type", ("Greedy", "Beam"))
     max_length = st.slider("Max Decoding Length", 2, 100)
-    show_test_df = st.button("Test Results") 
     if dec_type == "Greedy":
         decoder = GreedyDecoder(model=model, inpLang=inpLang, optLang=optLang)
     elif dec_type == "Beam":
@@ -95,13 +81,42 @@ if len(version)>0 and version_selected!=-1:
             st.markdown(f"**{str(idx)}**.   " + " ".join(i[1]))
             st.markdown(f" \t Score : ```{i[0]}```")
 
-    if show_test_df:
-        offset=st.number_input("Offset",min_value=0,max_value=int(test_df.shape[0]/50),step=50,value=0)
+  
+def print_table(test_df):
+    st.markdown("### Offset")
+    offset=st.number_input("",min_value=0,max_value=int(test_df.shape[0]/50),step=50,value=0)
+    st.markdown("### Test Results")
+    st.table(test_df.iloc[offset:offset+50])
 
-        st.markdown("### Test Results")
-        st.table(test_df.iloc[offset:offset+50])
 
-elif version_selected==-1:
-    st.markdown("Select Valid Model")
-else:
-    st.markdown("No Models available")
+def get_model(version,model_name,version_selected):
+    if len(version)==0:
+        version_selected=-2
+    
+    if len(version)>0 and version_selected!=-1:
+        model, inpLang, optLang, hp, test_df = load_st_model(model_name, version_selected)
+        return model, inpLang, optLang, hp, test_df
+
+    elif version_selected==-1:
+            st.markdown("Select Valid Model")
+    else:
+        st.markdown("No Models available")
+
+
+st.sidebar.title("Question Generation Models")
+
+model_name = st.sidebar.selectbox("Model", ["seq2seq", "transformer","attn_seq2seq"])
+version = get_max_version(model_name)
+version_selected = st.sidebar.slider(
+                "Select version", min_value=min(version)-1, max_value=max(version)
+            )
+model_data = get_model(version,model_name,version_selected)
+
+if model_data!=None:
+    model, inpLang, optLang, hp, test_df = model_data
+    show_test_df = st.sidebar.checkbox("Test Dataframe")
+    if not show_test_df:
+        run_model(model, inpLang, optLang, hp, test_df)
+    else:
+        print_table(test_df)
+
