@@ -6,7 +6,7 @@ import streamlit as st
 from models.seq2seq import Seq2seq
 from models.transformer import transformer
 from models.attn_seq2seq import AttnSeq2seq
-from utils import load_model, epoch_time, get_max_version, get_torch_device,load_test_df
+from utils import load_model, epoch_time, get_max_version, get_torch_device,load_test_df,load_test_metrics
 from inference.inference_helpers import GreedyDecoder, BeamDecoder
 import torch
 import time
@@ -80,6 +80,8 @@ def run_model(model, inpLang, optLang, hp, test_df):
         for idx, i in enumerate(outputs):
             st.markdown(f"**{str(idx)}**.   " + " ".join(i[1]))
             st.markdown(f" \t Score : ```{i[0]}```")
+    st.markdown("## Model Parameters")
+    st.write(hp)
 
   
 def print_table(test_df):
@@ -95,6 +97,9 @@ def get_model(version,model_name,version_selected):
     
     if len(version)>0 and version_selected!=-1:
         model, inpLang, optLang, hp, test_df = load_st_model(model_name, version_selected)
+        metrics = load_test_metrics(model_name, version_selected)
+        print(metrics)
+        st.sidebar.dataframe(metrics)
         return model, inpLang, optLang, hp, test_df
 
     elif version_selected==-1:

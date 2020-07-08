@@ -166,8 +166,10 @@ def load_model(name, version):
         hp = json.load(f)
     with open(path + "/inpLang.p", "rb") as f:
         inpLang = pickle.load(f)
+        inpLang.reload_bert()
     with open(path + "/optLang.p", "rb") as f:
         optLang = pickle.load(f)
+        optLang.reload_bert()
     state_dict = torch.load(path + f"/{name}.pt")
     return state_dict, inpLang, optLang, hp
 
@@ -177,6 +179,14 @@ def load_test_df(name, version):
     df = pd.read_csv(path + "/test_df.csv", index_col=[0])
     return df
 
+def load_test_metrics(name,version):
+    path = f"./src/saved_models/{name}/{version}"
+    with open(path + "/test_df_metrics.csv",'r') as f:
+        metrics = f.read()
+    metrics=metrics[1:-1].split("\\n")[:-1]
+    metrics= [i.split(":") for i in metrics]
+    return pd.DataFrame(metrics,columns=["Metric","Score"])
+    return metrics
 
 def save_test_df(df, name, version):
     path = f"./src/saved_models/{name}/{version}"
