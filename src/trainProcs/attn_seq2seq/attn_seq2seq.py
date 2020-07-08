@@ -15,7 +15,6 @@ from utils import (
     save_metrics,
 )
 from test_metrics.test_model import Model_tester
-
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -29,8 +28,6 @@ import argparse
 import pandas as pd
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-
 
 
 
@@ -232,6 +229,7 @@ if __name__ == "__main__":
     hp.optim = arg_copy(args.optim, hp.optim)
     hp.scheduler = arg_copy(args.scheduler, hp.scheduler)
     hp.attention_type = arg_copy(args.attention_type,hp.attention_type)
+
     if args.QGEN:
         hp.squad = True
     if args.NMT:

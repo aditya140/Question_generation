@@ -55,6 +55,8 @@ __TRANSFORMER__ = {
     "dec_dropout": 0.1,
     "val_split": 0.1,
     "test_split": 0.1,
+    "optim":"adam",
+    "scheduler":False,
     "to_artifact": False,
     "auto_lr_find": False,
 }
