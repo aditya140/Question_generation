@@ -272,7 +272,7 @@ class transformer(nn.Module):
             trg_tensor = torch.cat((trg_tensor, top1.unsqueeze(0)), dim=1)
             if top1.item() == stop_token or trg_tensor.shape[1] > max_len:
                 stop = True
-        return trg_tensor[0].tolist()
+        return trg_tensor[0].tolist(),None
 
     def beam(self, src, start_token, stop_token, beam_width=3, max_len=100):
         beam = Beam(beam_width)

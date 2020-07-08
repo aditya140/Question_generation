@@ -16,7 +16,7 @@ model = transformer(src_pad_idx=src_pad_idx, trg_pad_idx=trg_pad_idx, **hp)
 model.load_state_dict(state_dict)
 inference = GreedyDecoder(model=model, inpLang=inpLang, optLang=optLang)
 inference.to(torch.device("cuda"))
-print(" ".join(inference.greedy("john used to live in canada", max_len=50)))
+print(" ".join(inference.greedy("john used to live in canada", max_len=50)[0]))
 
 
 state_dict, inpLang, optLang, hp = load_model(name="transformer", version=3)

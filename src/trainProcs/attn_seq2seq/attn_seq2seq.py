@@ -3,8 +3,8 @@ import sys
 sys.path.append("./src/")
 
 from dataloader import SimpleDataloader
-from params import TRANSFORMER_PARAMS
-from models.transformer import transformer, count_parameters
+from params import ATTN_SEQ2SEQ_PARAMS
+from models.attn_seq2seq import AttnSeq2seq, count_parameters, Encoder, Decoder
 from utils import (
     save_model,
     get_torch_device,
@@ -45,15 +45,15 @@ def main(hp):
     train_dataloader = data.get_train_dataloader()
     val_dataloader = data.get_val_dataloader()
     test_dataloader = data.get_test_dataloader()
-    src_pad_idx = data.inpLang.word2idx[data.inpLang.special["pad_token"]]
-    trg_pad_idx = data.optLang.word2idx[data.optLang.special["pad_token"]]
 
     """
     Create model
     """
-    model = transformer(src_pad_idx=src_pad_idx, trg_pad_idx=trg_pad_idx, **vars(hp),)
-
-    model.initialize_weights()
+    model = AttnSeq2seq(**vars(hp))
+    model.init_weights()
+    if hp.pretrained:
+        inp_emb, opt_emb = data.get_weight_matrix()
+        model.create_embeddings(inp_emb, opt_emb)
     print(f"The model has {count_parameters(model):,} trainable parameters")
     print(model)
     model.to(device)
@@ -96,9 +96,9 @@ def main(hp):
             src, trg, src_len = batch
             src = src.to(device)
             trg = trg.to(device)
-            pred, _ = model(src, trg[:, :-1])
-            pred = pred.permute(0, 2, 1)
-            loss = loss_fn(pred, trg[:, 1:])
+            pred = model(src, trg)
+            pred = pred.permute(1, 2, 0)
+            loss = loss_fn(pred, trg)
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
@@ -118,9 +118,9 @@ def main(hp):
             src = src.to(device)
             trg = trg.to(device)
             with torch.no_grad():
-                pred, _ = model(src, trg[:, :-1])
-            pred = pred.permute(0, 2, 1)
-            loss = loss_fn(pred, trg[:, 1:])
+                pred = model(src, trg)
+            pred = pred.permute(1, 2, 0)
+            loss = loss_fn(pred, trg)
             losses.append(loss.item())
         return np.mean(losses)
 
@@ -140,7 +140,7 @@ def main(hp):
         return df
 
     def test_model(model, inpLang, optLang, test_df):
-        tester = Model_tester(model, inpLang, optLang, max_len=100)
+        tester = Model_tester(model, inpLang, optLang, max_len=40)
         tester.set_inference_mode("greedy")
         return tester.generate_metrics(test_df)
 
@@ -157,6 +157,7 @@ def main(hp):
         st_time = time.time()
         train_loss = train(model, train_dataloader, optimizer, CCE, device)
         val_loss = evaluate(model, val_dataloader, CCE, device)
+        scheduler.step(val_loss)
         if val_loss < best_model_loss:
             to_save = {
                 "model": model,
@@ -166,7 +167,7 @@ def main(hp):
                 "params": vars(hp),
                 "version": version,
             }
-            save_model(path=hp.save_path, name="transformer.pt", **to_save)
+            save_model(path=hp.save_path, name="attn_seq2seq.pt", **to_save)
             best_model_loss = val_loss
         e_time = time.time()
         epoch_mins, epoch_secs = epoch_time(st_time, e_time)
@@ -183,51 +184,51 @@ def main(hp):
         print(f"\tTime per epoch: {epoch_mins}m {epoch_secs}s")
     print("Generating Test Metrics")
     df, metrics = test_model(model, data.inpLang, data.optLang, test_df)
-    save_test_df(df, "transformer", version)
-    save_metrics(metrics, "transformer", version)
+    save_test_df(df, "attn_seq2seq", version)
+    save_metrics(metrics, "attn_seq2seq", version)
     print(metrics)
     if hp.to_artifact:
-        save_to_artifact("transformer", version)
+        save_to_artifact("attn_seq2seq", version)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Transformer Training")
+    parser = argparse.ArgumentParser(description="Attention Seq2seq Training")
     parser.add_argument("--gpu", action="store_true", help="Use GPU")
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--lr", type=float)
     parser.add_argument("--layers", type=int)
     parser.add_argument("--inp_vocab", type=int)
     parser.add_argument("--out_vocab", type=int)
-    parser.add_argument("--att_heads", type=int)
+    parser.add_argument("--emb_dim", type=int)
     parser.add_argument("--hidden_dim", type=int)
-    parser.add_argument("--pf_dim", type=int)
     parser.add_argument("--dropout", type=float)
     parser.add_argument("--tokenizer", type=str)
+    parser.add_argument("--attention_type", type=str)
     parser.add_argument("--optim", type=str)
     parser.add_argument("--scheduler", action="store_true", help="Use Scheduler")
     parser.add_argument("--NMT", action="store_true", help="Neural Machine Translation")
     parser.add_argument("--QGEN", action="store_true", help="Question Generation")
+    parser.add_argument("--pretrained", action="store_true", help="Question Generation")
+    parser.add_argument("--sample", action="store_true", help="Sample")
     parser.add_argument(
         "--to_artifact", action="store_true", help="Save to artifacts folder"
     )
-    parser.add_argument("--sample", action="store_true", help="Sample")
 
     args = parser.parse_args()
-    hp = TRANSFORMER_PARAMS
+    hp = ATTN_SEQ2SEQ_PARAMS
     hp.epochs = arg_copy(args.epochs, hp.epochs)
     hp.input_vocab = arg_copy(args.inp_vocab, hp.input_vocab)
     hp.output_vocab = arg_copy(args.out_vocab, hp.output_vocab)
-    hp.dec_layers = arg_copy(args.layers, hp.dec_layers)
-    hp.enc_layers = arg_copy(args.layers, hp.enc_layers)
-    hp.enc_heads = arg_copy(args.att_heads, hp.enc_heads)
-    hp.dec_heads = arg_copy(args.att_heads, hp.dec_heads)
-    hp.hidden_dim = arg_copy(args.hidden_dim, hp.hidden_dim)
+    hp.embedding_dim = arg_copy(args.emb_dim, hp.embedding_dim)
+    hp.rnn_units = arg_copy(args.layers, hp.rnn_units)
+    hp.hidden_size = arg_copy(args.hidden_dim, hp.hidden_size)
     hp.tokenizer = arg_copy(args.tokenizer, hp.tokenizer)
     hp.to_artifact = arg_copy(args.to_artifact, hp.to_artifact)
+    hp.pretrained = arg_copy(args.pretrained, hp.pretrained)
     hp.sample = arg_copy(args.sample, hp.sample)
     hp.optim = arg_copy(args.optim, hp.optim)
     hp.scheduler = arg_copy(args.scheduler, hp.scheduler)
-
+    hp.attention_type = arg_copy(args.attention_type,hp.attention_type)
 
     if args.QGEN:
         hp.squad = True

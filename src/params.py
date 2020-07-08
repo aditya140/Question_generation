@@ -7,7 +7,7 @@ __SEQ2SEQ__ = {
     "input_vocab": 45000,
     "output_vocab": 45000,
     "embedding_dim": 300,
-    "pretrained": True,
+    "pretrained": False,
     "rnn_units": 2,
     "hidden_size": 600,
     "batch_size": 64,
@@ -55,7 +55,43 @@ __TRANSFORMER__ = {
     "dec_dropout": 0.1,
     "val_split": 0.1,
     "test_split": 0.1,
+    "optim":"adam",
+    "scheduler":False,
     "to_artifact": False,
     "auto_lr_find": False,
 }
 TRANSFORMER_PARAMS = argparse.Namespace(**__TRANSFORMER__)
+
+
+
+
+
+__ATTN_SEQ2SEQ__ = {
+    "save_path": "./src/saved_models/attn_seq2seq",
+    "lr": 5e-3,
+    "input_vocab": 45000,
+    "output_vocab": 45000,
+    "embedding_dim": 300,
+    "pretrained": False,
+    "attention_type":"dot",
+    "rnn_units": 1,
+    "bidir":True,
+    "hidden_size": 600,
+    "batch_size": 64,
+    "squad": True,
+    "tokenizer": "spacy",
+    "max_len": 40,
+    "sample": False,
+    "dropout": 0.3,
+    "val_split": 0.1,
+    "test_split": 0.1,
+    "enc_emb_dim": 300,
+    "dec_emb_dim": 300,
+    "enc_dropout": 0.3,
+    "dec_dropout": 0.3,
+    "epochs": 8,
+    "optim":"adam",
+    "scheduler":False,
+    "to_artifact": False,
+}
+ATTN_SEQ2SEQ_PARAMS = argparse.Namespace(**__ATTN_SEQ2SEQ__)

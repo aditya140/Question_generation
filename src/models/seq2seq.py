@@ -158,7 +158,7 @@ class Seq2seq(nn.Module):
             if top1.item() == stop_token or len(outputs) > max_len:
                 stop = True
             outputs.append(top1.item())
-        return outputs
+        return outputs,None
 
     def greedy_batch(self, src, start_token, stop_token, max_len=10):
         """[summary]
