@@ -52,6 +52,11 @@ class LanguageIndex:
         self.spacy = None
         self.create_index()
 
+    def reload_bert(self):
+        if self.tokenizer == "BERT":
+            model_type = "bert-base-uncased"
+            self.bert_tokenizer = AutoTokenizer.from_pretrained(model_type)
+
     @staticmethod
     def unicode_to_ascii(s):
         """
